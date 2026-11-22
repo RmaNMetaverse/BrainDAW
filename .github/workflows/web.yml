@@ -1,0 +1,77 @@
+name: Web
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['web-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/
+          if-no-files-found: ignore
+      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - if: startsWith(github.ref, 'refs/tags/web-v')
+        working-directory: dist
+        run: zip -qr ../BrainDAW-Web.zip .
+      - if: startsWith(github.ref, 'refs/tags/web-v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: BrainDAW-Web.zip
+          if-no-files-found: error
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: pages
+  release:
+    if: startsWith(github.ref, 'refs/tags/web-v')
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+      - run: gh release create "$GITHUB_REF_NAME" BrainDAW-Web.zip --verify-tag --title "BrainDAW Web ${GITHUB_REF_NAME#web-v}" --notes-file .github/release-notes/web.md
+        env:
+          GH_TOKEN: ${{ github.token }}
