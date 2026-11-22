@@ -23,9 +23,18 @@ test('first click starts live audio across the three-channel console', async ({ 
     analyser.getFloatTimeDomainData(samples);
     return Math.max(...samples.map(Math.abs));
   })).toBeGreaterThan(0.008);
+  await expect(page.getByText('Field recordings active')).toBeVisible();
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as Window & { testAudioContext?: AudioContext }).testAudioContext?.state)).toBe('suspended');
   expect(errors).toEqual([]);
+});
+
+test('an unavailable biome leaves the procedural engine running', async ({ page }) => {
+  await page.route('**/biomes/**', (route) => route.abort());
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByText('Procedural soundscape')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
 });
 
 test('mobile can switch between channels while transport and mixer remain available', async ({ page }) => {

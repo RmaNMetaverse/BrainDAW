@@ -1,5 +1,5 @@
 import type { SynthPadParams } from '../types/audio';
-import { gain, impulse, lowpass, oscillator } from './utils/audioGraph';
+import { gain, lowpass, oscillator } from './utils/audioGraph';
 import { initialVoicing, midiToHz, neighboringNotes } from './utils/musicTheory';
 import { lerp, smoothParam } from './utils/smoothing';
 
@@ -57,8 +57,7 @@ export class SynthPadEngine {
       filtered.connect(delay).connect(pan).connect(gain(context, 0.19)).connect(this.output);
     }
 
-    this.reverb = context.createConvolver();
-    this.reverb.buffer = impulse(context, 4);
+    this.reverb = new AudioWorkletNode(context, 'shimmer-reverb', { outputChannelCount: [2] });
     this.reverbLevel = gain(context, 0.2);
     this.reverbInput = gain(context, 1);
     filtered.connect(this.reverbInput);
@@ -77,6 +76,10 @@ export class SynthPadEngine {
     smoothParam(this.filterLfo.frequency, params.filterLfoRateHz, now);
     smoothParam(this.filterDepth.gain, params.filterLfoDepth * params.filterCutoffHz * 0.65, now);
     smoothParam(this.reverbLevel.gain, 0.15 + params.shimmerAmount * 0.26, now);
+    const shimmer = this.reverb.parameters.get('shimmer');
+    const decay = this.reverb.parameters.get('decay');
+    if (shimmer) smoothParam(shimmer, params.shimmerAmount, now);
+    if (decay) smoothParam(decay, params.reverbDecaySec, now);
     for (const filter of this.filters) smoothParam(filter.frequency, params.filterCutoffHz, now);
     if (!previous || previous.reverbDecaySec !== params.reverbDecaySec) {
       smoothParam(this.reverbInput.gain, 0.65 + params.reverbDecaySec / 20, now);

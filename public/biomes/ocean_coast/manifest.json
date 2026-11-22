@@ -1,0 +1,18 @@
+{
+  "id": "ocean_coast",
+  "name": "Ocean Coast",
+  "version": "1",
+  "beds": {
+    "windTiers": [
+      "../shared/wind-low.opus",
+      "../shared/wind-high.opus"
+    ],
+    "waterFlow": "../shared/ocean.opus",
+    "ambientAir": "../shared/ocean.opus"
+  },
+  "oneshots": {
+    "thunder": [],
+    "wildlife": [],
+    "accents": []
+  }
+}

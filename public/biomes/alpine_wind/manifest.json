@@ -1,0 +1,21 @@
+{
+  "id": "alpine_wind",
+  "name": "Alpine Wind",
+  "version": "1",
+  "beds": {
+    "windTiers": [
+      "../shared/wind-low.opus",
+      "../shared/wind-high.opus"
+    ],
+    "waterFlow": "../shared/stream.opus"
+  },
+  "oneshots": {
+    "thunder": [
+      "../shared/thunder-distant.opus"
+    ],
+    "wildlife": [
+      "../shared/thrush.opus"
+    ],
+    "accents": []
+  }
+}

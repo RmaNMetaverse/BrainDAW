@@ -26,7 +26,8 @@ class AudioEngineManager {
     this.context = context;
     try {
       await context.resume();
-      await context.audioWorklet.addModule(new URL('worklets/noise-generator.worklet.js', document.baseURI).href);
+      await Promise.all(['noise-generator', 'granular-cloud', 'shimmer-reverb'].map((name) =>
+        context.audioWorklet.addModule(new URL('worklets/' + name + '.worklet.js', document.baseURI).href)));
       this.master = gain(context, 0);
       this.sleepGain = gain(context, 1);
       this.meter = context.createAnalyser();
@@ -39,7 +40,8 @@ class AudioEngineManager {
       limiter.release.setValueAtTime(0.15, context.currentTime);
       this.master.connect(limiter).connect(this.sleepGain).connect(this.meter).connect(context.destination);
       this.brainwave = new BrainwaveEngine(context);
-      this.nature = new NatureEngine(context);
+      this.nature = new NatureEngine(context, (biomeLoadingState, usingProceduralFallback) =>
+        useAudioStore.setState({ biomeLoadingState, usingProceduralFallback }));
       this.pad = new SynthPadEngine(context);
       this.brainwave.output.connect(this.master);
       this.nature.output.connect(this.master);
@@ -90,6 +92,7 @@ class AudioEngineManager {
   private tick() {
     if (!this.context) return;
     this.pad?.tick();
+    this.nature?.tick();
     const current = this.brainwave?.progress();
     const remaining = this.sleepDeadline === null ? null : Math.max(0, Math.ceil(this.sleepDeadline - this.context.currentTime));
     const state = useAudioStore.getState();

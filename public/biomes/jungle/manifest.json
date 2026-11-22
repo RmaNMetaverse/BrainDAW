@@ -1,0 +1,32 @@
+{
+  "id": "jungle",
+  "name": "Rainforest",
+  "version": "1",
+  "beds": {
+    "rainTiers": [
+      "../shared/rain-light.opus",
+      "../shared/rain-steady.opus",
+      "../shared/rain-heavy.opus"
+    ],
+    "windTiers": [
+      "../shared/wind-low.opus",
+      "../shared/wind-high.opus"
+    ],
+    "ambientAir": "../shared/jungle.opus",
+    "insectBed": "../shared/crickets.opus",
+    "waterFlow": "../shared/stream.opus"
+  },
+  "oneshots": {
+    "thunder": [
+      "../shared/thunder-near.opus",
+      "../shared/thunder-distant.opus"
+    ],
+    "wildlife": [
+      "../shared/frog.opus",
+      "../shared/thrush.opus"
+    ],
+    "accents": [
+      "../shared/drip.opus"
+    ]
+  }
+}
