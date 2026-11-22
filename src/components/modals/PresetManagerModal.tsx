@@ -1,6 +1,7 @@
 import { Download, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { exportFile, fileBasename } from '../../platform/fileExport';
+import { exportFile, fileBasename, pickDesktopFiles } from '../../platform/fileExport';
+import { isDesktop } from '../../platform/platformBridge';
 import { deletePreset, listPresets, parsePreset, savePreset, snapshotPreset } from '../../store/presets';
 import { useAudioStore } from '../../store/useAudioStore';
 import type { NeuroScapePreset } from '../../types/audio';
@@ -31,6 +32,13 @@ export function PresetManagerModal({ onClose, onChange }: { onClose: () => void;
     setMessage('Saved ' + preset.name + '.');
   }
 
+  async function importPreset(file?: File) {
+    if (!file) return;
+    if (file.size > 200_000) throw new Error('Preset files must be under 200 KB.');
+    const preset = parsePreset(JSON.parse(await file.text()));
+    await store({ ...preset, id: 'preset-' + crypto.randomUUID(), category: 'custom' });
+  }
+
   return <Modal label="Preset library" onClose={onClose}>
     <form className="preset-save" onSubmit={(event) => {
       event.preventDefault();
@@ -43,14 +51,12 @@ export function PresetManagerModal({ onClose, onChange }: { onClose: () => void;
       <input ref={input} hidden type="file" accept="application/json,.json" aria-label="Preset JSON" onChange={(event) => {
         const file = event.currentTarget.files?.[0];
         event.currentTarget.value = '';
-        if (!file) return;
-        void run(async () => {
-          if (file.size > 200_000) throw new Error('Preset files must be under 200 KB.');
-          const preset = parsePreset(JSON.parse(await file.text()));
-          await store({ ...preset, id: 'preset-' + crypto.randomUUID(), category: 'custom' });
-        });
+        if (file) void run(() => importPreset(file));
       }} />
-      <button className="secondary-button" type="button" disabled={busy} onClick={() => input.current?.click()}><Upload size={16} /> Import JSON</button>
+      <button className="secondary-button" type="button" disabled={busy} onClick={() => {
+        if (!isDesktop()) input.current?.click();
+        else void run(async () => importPreset((await pickDesktopFiles(['json'], false))[0]));
+      }}><Upload size={16} /> Import JSON</button>
       <button className="secondary-button" type="button" disabled={busy} onClick={() => void run(async () => {
         const preset = snapshotPreset();
         await exportFile(fileBasename(preset.name) + '.json', JSON.stringify(preset, null, 2), 'application/json');

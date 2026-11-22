@@ -9,6 +9,8 @@ export function detectPlatform(): RuntimePlatform {
   return 'web';
 }
 
+export function isDesktop() { return detectPlatform().startsWith('tauri-'); }
+
 export function hapticTick() {
   // Native shells supply their own feedback; the browser may expose vibration.
   if (detectPlatform() === 'web' && navigator.maxTouchPoints > 0) navigator.vibrate?.(10);

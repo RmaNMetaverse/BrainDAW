@@ -13,6 +13,7 @@ test-results/
 *.p12
 *.mobileprovision
 src-tauri/target/
+src-tauri/gen/
 mobile/android/.gradle/
 mobile/android/local.properties
 mobile/android/**/build/

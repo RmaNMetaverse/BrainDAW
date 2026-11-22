@@ -3,11 +3,13 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { registerSW } from 'virtual:pwa-register';
 import { registerBackgroundAudio } from './platform/backgroundAudio';
-import { detectPlatform } from './platform/platformBridge';
+import { detectPlatform, isDesktop } from './platform/platformBridge';
 import { restoreStudio } from './store/presets';
 import './studio.css';
 
+document.documentElement.dataset.platform = detectPlatform();
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 void restoreStudio().catch(() => undefined);
 registerBackgroundAudio();
+if (isDesktop()) void import('./platform/desktop').then(({ registerDesktopControls }) => registerDesktopControls()).catch(() => undefined);
 if (import.meta.env.PROD && detectPlatform() === 'web') registerSW({ immediate: true });

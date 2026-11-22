@@ -36,7 +36,7 @@ export function MasterTransport() {
   const fadeOptions = [30, 60, 90, 120];
   if (!fadeOptions.includes(state.fadeOutSec)) fadeOptions.push(state.fadeOutSec);
   return <>
-    <header className="brand"><span className="brand-icon"><AudioLines size={23} /></span><div><h1>BrainDAW</h1><span>NeuroScape Studio</span></div>
+    <header className="brand" data-tauri-drag-region><span className="brand-icon"><AudioLines size={23} /></span><div><h1>BrainDAW</h1><span>NeuroScape Studio</span></div>
       <button className="secondary-button library-button" onClick={() => setLibraryOpen(true)}><BookOpen size={16} /> Preset library</button>
     </header>
     <section className="transport" aria-label="Master transport">

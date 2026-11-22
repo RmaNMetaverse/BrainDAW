@@ -1,7 +1,14 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
+import { isDesktop } from './platformBridge';
 
 export async function exportFile(name: string, contents: string | Uint8Array, mime: string) {
   const bytes = typeof contents === 'string' ? strToU8(contents) : contents;
+  if (isDesktop()) {
+    const [{ save }, { writeFile }] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
+    const path = await save({ defaultPath: name, filters: [{ name: 'BrainDAW file', extensions: [name.split('.').at(-1) ?? 'json'] }] });
+    if (path) await writeFile(path, bytes);
+    return;
+  }
   const blob = new Blob([new Uint8Array(bytes)], { type: mime });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -9,6 +16,14 @@ export async function exportFile(name: string, contents: string | Uint8Array, mi
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+export async function pickDesktopFiles(extensions: string[], multiple: boolean) {
+  const [{ open }, { readFile }] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
+  const paths = await open({ multiple, filters: [{ name: 'BrainDAW files', extensions }] });
+  if (!paths) return [];
+  return Promise.all((Array.isArray(paths) ? paths : [paths]).map(async (path) =>
+    new File([new Uint8Array(await readFile(path))], path.split(/[\\/]/).at(-1) ?? 'recording')));
 }
 
 export function fileBasename(name: string) {

@@ -6,7 +6,8 @@ import { useAudioStore } from '../../store/useAudioStore';
 import type { BiomePackManifest, NatureParams } from '../../types/audio';
 import { Fader } from '../controls/Fader';
 import { XYPad } from '../controls/XYPad';
-import { expandBiomeImport, exportBiome } from '../../platform/fileExport';
+import { expandBiomeImport, exportBiome, pickDesktopFiles } from '../../platform/fileExport';
+import { isDesktop } from '../../platform/platformBridge';
 import { ChannelPanel } from './ChannelPanel';
 
 const controls: [Exclude<keyof NatureParams, 'biome' | 'enabled'>, string][] = [
@@ -69,7 +70,11 @@ export function NaturePanel() {
           void importRecordings(Array.from(event.currentTarget.files ?? []));
           event.currentTarget.value = '';
         }} />
-      <button type="button" disabled={importing} onClick={() => input.current?.click()}><Upload size={16} /> {importing ? 'Importing…' : 'Import recordings'}</button>
+      <button type="button" disabled={importing} onClick={() => {
+        if (!isDesktop()) input.current?.click();
+        else void pickDesktopFiles(['opus', 'flac', 'ogg', 'wav', 'mp3', 'm4a', 'json', 'zip'], true).then(importRecordings).catch((error: unknown) =>
+          setMessage(error instanceof Error ? error.message : 'Could not open the recordings.'));
+      }}><Upload size={16} /> {importing ? 'Importing…' : 'Import recordings'}</button>
       <span>Drop audio files or a biome ZIP</span>
       {selectedCustom && <button type="button" onClick={() => {
         void NatureEngine.exportFiles(selectedCustom.id).then((files) => exportBiome(selectedCustom.name, files)).catch((error: unknown) =>
