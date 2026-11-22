@@ -55,7 +55,59 @@ select { background: #1a2231; border: 1px solid var(--line); border-radius: 8px;
 .controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
 .control { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 5px; font-size: .875rem; }
 output, .beat-display strong { color: var(--accent); font: 500 .75rem var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.control input { grid-column: 1 / -1; accent-color: var(--accent); width: 100%; height: 18px; }
+.fader-target { grid-column: 1 / -1; min-width: 0; height: 22px; position: relative; display: grid; align-items: center; touch-action: none; cursor: ew-resize; }
+.fader-track { height: 4px; position: relative; background: #334057; border-radius: 4px; }
+.fader-track i { display: block; height: 100%; width: var(--position); background: var(--accent); border-radius: inherit; opacity: .74; }
+.fader-track b { position: absolute; top: 50%; left: var(--position); width: 8px; height: 12px; border-radius: 2px; transform: translate(-50%, -50%); background: #eaf6ff; box-shadow: 0 0 9px color-mix(in srgb, var(--accent) 55%, transparent); }
+.fader.vertical .fader-target { height: 94px; display: grid; justify-content: center; cursor: ns-resize; }
+.fader.vertical .fader-track { width: 4px; height: 90px; }
+.fader.vertical .fader-track i { width: 100%; height: var(--position); position: absolute; bottom: 0; }
+.fader.vertical .fader-track b { width: 16px; height: 7px; top: auto; bottom: var(--position); left: 50%; transform: translate(-50%, 50%); }
+.knob-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px 7px; }
+.knob { min-width: 0; display: grid; justify-items: center; text-align: center; gap: 3px; font-size: .75rem; color: #c3cfe3; padding: 5px 1px 7px; background: #0a111d80; border-radius: 8px; }
+.knob-target { width: 54px; height: 46px; touch-action: none; cursor: ns-resize; border-radius: 10px; }
+.knob-target svg { width: 100%; height: 100%; overflow: visible; }
+.knob-track, .knob-arc, .knob-needle { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+.knob-track { stroke: #35415a; }
+.knob-arc, .knob-needle { stroke: var(--accent); }
+.knob-face { fill: #1a2436; stroke: #35415a; }
+.xy-pad { position: relative; min-height: 120px; overflow: hidden; touch-action: none; cursor: crosshair; isolation: isolate; border: 1px solid var(--line); border-radius: 10px;
+  background: radial-gradient(circle at var(--x) var(--y), color-mix(in srgb, var(--accent) 26%, transparent), transparent 50%), repeating-linear-gradient(0deg, #ffffff0b 0 1px, transparent 1px 25%), repeating-linear-gradient(90deg, #ffffff0b 0 1px, transparent 1px 25%), #09121d; }
+.xy-pad::before, .xy-pad::after { content: ''; position: absolute; background: color-mix(in srgb, var(--accent) 36%, transparent); pointer-events: none; }
+.xy-pad::before { left: var(--x); width: 1px; height: 100%; }
+.xy-pad::after { top: var(--y); height: 1px; width: 100%; }
+.xy-pad i { position: absolute; z-index: 1; top: var(--y); left: var(--x); transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 50%; border: 2px solid #eff9ff; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.xy-pad span { position: absolute; z-index: 1; font-size: .75rem; color: #d3deed; pointer-events: none; }
+.xy-left { left: 8px; top: 7px; }
+.xy-bottom { bottom: 7px; right: 8px; }
+.nature-status { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.axis-button { border: 1px solid var(--line); padding: 4px 6px; border-radius: 6px; font-size: .75rem; color: var(--muted); }
+.axis-button[aria-pressed=true] { color: var(--accent); }
+.visualizer { display: block; min-width: 60px; width: 0; height: 44px; flex: 1; border: 1px solid var(--line); border-radius: 8px; background: #05091680; }
+.secondary-button, .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); min-height: 34px; font-size: .82rem; }
+.secondary-button { background: #ffffff0a; color: #e3e9f7; }
+.secondary-button:hover { background: #ffffff16; }
+.primary-button { background: #e3edff; color: #101829; font-weight: 650; }
+.library-button { margin-left: auto; }
+.timeline-button { width: 100%; justify-content: start; }
+.timeline-button span { margin-left: auto; color: var(--muted); }
+.session-progress { width: 100%; height: 5px; accent-color: var(--accent); }
+.studio-dialog { margin: auto; width: min(550px, calc(100% - 28px)); max-height: 82dvh; padding: 17px; background: #111827; color: #edf3ff; border: 1px solid #33415a; border-radius: 14px; box-shadow: 0 20px 80px #0009; }
+.studio-dialog::backdrop { background: #050812ba; backdrop-filter: blur(5px); }
+.studio-dialog header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.studio-dialog h2 { font-size: 1.13rem; font-weight: 650; }
+.studio-dialog input:not([type=file]) { width: 100%; min-width: 0; background: #182235; border: 1px solid var(--line); padding: 8px; border-radius: 7px; color: #edf3ff; }
+.dialog-form { display: grid; gap: 12px; }
+.dialog-actions { display: flex; justify-content: space-between; gap: 9px; margin-top: 10px; }
+.timeline-stage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; border: 1px solid var(--line); padding: 10px; border-radius: 8px; }
+.timeline-stage legend { padding: 0 5px; font-size: .78rem; color: var(--muted); }
+.stage-name { grid-column: 1 / 3; }
+.stage-actions { grid-column: 3; grid-row: 1; display: flex; justify-content: end; align-items: center; gap: 4px; }
+.stage-actions .icon-button { width: 24px; }
+.preset-save { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 9px; }
+.preset-list { margin: 13px 0; display: grid; gap: 5px; }
+.preset-list li { display: flex; justify-content: space-between; align-items: center; gap: 5px; border-top: 1px solid var(--line); padding-top: 4px; }
+.preset-load { flex: 1; text-align: left; padding: 5px; }
 .beat-display { display: grid; gap: 1px; padding: 12px; background: #03071075; border: 1px solid var(--line); border-radius: 11px; }
 .beat-display strong { font-size: 2.3rem; letter-spacing: -.06em; }
 .beat-display small { font-size: .9rem; }
@@ -75,11 +127,11 @@ output, .beat-display strong { color: var(--accent); font: 500 .75rem var(--mono
   .console[data-selected=brainwave] .synthPad, .console[data-selected=nature] .brainwave, .console[data-selected=synthPad] .nature { display: none; }
   .mini-mixer { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 8px 13px; margin-bottom: 12px; }
   .mini-channel { min-width: 0; }
-  .mini-channel > div { display: flex; align-items: center; gap: 4px; }
+  .mini-channel > div:first-child { display: flex; align-items: center; gap: 4px; }
   .mini-channel .icon-button { width: 25px; height: 25px; }
   .mini-channel .control > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .mini-channel .control output { grid-column: 2; grid-row: 1; }
-  .mini-channel .control input { grid-column: 1; grid-row: 1; }
+  .mini-channel .control .fader-target { grid-column: 1; grid-row: 1; }
   .tab { color: var(--muted); font-size: .8rem; padding: 4px; }
   .tab[aria-pressed=true] { color: var(--accent); }
 }
@@ -99,10 +151,12 @@ output, .beat-display strong { color: var(--accent); font: 500 .75rem var(--mono
   .master { grid-column: 1 / -1; }
   .master .icon-button { width: 25px; height: 23px; }
   .master .control { grid-template-columns: auto minmax(30px, 1fr) auto; }
-  .master .control input { grid-column: 2; grid-row: 1; }
+  .master .control .fader-target { grid-column: 2; grid-row: 1; }
   .master .control output { grid-column: 3; grid-row: 1; }
   .mini-mixer { padding: 5px 7px; gap: 6px; margin-bottom: 8px; }
   .console { grid-template-columns: minmax(0, 1fr); }
   .console .channel[data-active=false] { display: none; }
-  .studio-footer span + span { display: none; }
+  .visualizer { display: none; }
+  .timer { justify-self: end; padding-inline: 7px; }
+  .studio-footer > span { display: none; }
 }

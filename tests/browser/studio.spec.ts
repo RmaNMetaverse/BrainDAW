@@ -37,6 +37,40 @@ test('an unavailable biome leaves the procedural engine running', async ({ page 
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
 });
 
+test('a custom mix and timeline survive an IndexedDB round trip', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('slider', { name: 'Master', exact: true }).press('Home');
+  await expect(page.getByRole('slider', { name: 'Master', exact: true })).toHaveAttribute('aria-valuenow', '0');
+  await page.getByRole('button', { name: 'Session timeline' }).click();
+  await page.getByRole('button', { name: 'Add stage' }).click();
+  await page.getByLabel('Target beat (Hz)').fill('4.25');
+  await page.getByRole('button', { name: 'Apply timeline' }).click();
+  await page.getByRole('button', { name: 'Preset library' }).click();
+  await page.getByLabel('Preset name').fill('Test Mix');
+  await page.getByRole('button', { name: 'Save current mix' }).click();
+  await expect(page.getByText('Saved Test Mix.')).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export current' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('Test-Mix.json');
+  await page.reload();
+  await expect(page.getByRole('combobox', { name: 'Session preset' })).toContainText('Test Mix');
+  await page.getByRole('combobox', { name: 'Session preset' }).selectOption({ label: 'Test Mix' });
+  await expect(page.getByRole('slider', { name: 'Master', exact: true })).toHaveAttribute('aria-valuenow', '0');
+  await page.getByRole('button', { name: 'Session timeline' }).click();
+  await expect(page.getByLabel('Target beat (Hz)')).toHaveValue('4.25');
+});
+
+test('the installed web app starts field audio with the network disconnected', async ({ page, context }) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 20_000 }).toBe(true);
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await expect(page.getByText('Field recordings active')).toBeVisible();
+});
+
 test('mobile can switch between channels while transport and mixer remain available', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

@@ -1,20 +1,23 @@
 import { useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { audioEngine } from '../../audio/AudioEngineManager';
 import { useAudioStore } from '../../store/useAudioStore';
 import { BrainwavePanel } from '../channels/BrainwavePanel';
 import { channels, setChannelVolume, toggleChannel } from '../channels/ChannelPanel';
 import { NaturePanel } from '../channels/NaturePanel';
 import { SynthPadPanel } from '../channels/SynthPadPanel';
-import { BasicControl } from '../controls/BasicControl';
+import { Fader } from '../controls/Fader';
 import { MasterTransport } from './MasterTransport';
 
 function MiniMixer() {
-  const state = useAudioStore();
+  const state = useAudioStore(useShallow((s) => ({
+    brainwave: s.brainwave, nature: s.nature, synthPad: s.synthPad, activeMobileTab: s.activeMobileTab,
+  })));
   return <div className="mini-mixer" aria-label="Channel balance">
     {channels.map(({ id, name, Icon }) => <div className={'mini-channel ' + id} key={id}>
       <div><button className="icon-button" aria-label={'Mute ' + name} aria-pressed={!state[id].enabled} onClick={() => toggleChannel(id)}><Icon size={16} /></button>
         <button className="tab" aria-pressed={state.activeMobileTab === id} onClick={() => useAudioStore.setState({ activeMobileTab: id })}>{name}</button></div>
-      <BasicControl label={name + ' balance'} value={state[id].volume} onChange={(volume) => setChannelVolume(id, volume)} />
+      <Fader label={name + ' balance'} value={state[id].volume} onChange={(volume) => setChannelVolume(id, volume)} />
     </div>)}
   </div>;
 }
@@ -40,7 +43,7 @@ export function StudioShell() {
     <div className="pinned"><MasterTransport /><MiniMixer /></div>
     {error && <p className="error" role="alert">{error}</p>}
     <div className="console" data-selected={useAudioStore((state) => state.activeMobileTab)} onTouchStart={(event) => {
-      if ((event.target as HTMLElement).closest('button,input,select,[role="slider"]')) return;
+      if ((event.target as HTMLElement).closest('button,input,select,[role="slider"],.xy-pad')) return;
       pointerStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
     }} onTouchCancel={() => { pointerStart.current = null; }} onTouchEnd={(event) => {
       const start = pointerStart.current;
@@ -54,6 +57,6 @@ export function StudioShell() {
     }}>
       <BrainwavePanel /><NaturePanel /><SynthPadPanel />
     </div>
-    <footer className="studio-footer"><span>BrainDAW Studio</span><span>Space to play · M to mute · 1–3 to toggle channels</span></footer>
+    <footer className="studio-footer"><a href={import.meta.env.BASE_URL + 'biomes/credits.md'} target="_blank" rel="noreferrer">Field recording credits</a><span>Space to play · M to mute · 1–3 to toggle channels</span></footer>
   </main>;
 }

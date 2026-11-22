@@ -70,7 +70,7 @@ export class BiomePackLoader {
       if (decoded.duration > 240 || decoded.numberOfChannels > 2) throw new Error('Use mono or stereo recordings up to 4 minutes each.');
       supplied.set(file.name, bytes);
     }
-    const paths = this.paths(manifest);
+    const paths = BiomePackLoader.paths(manifest);
     if (!paths.length || paths.some((path) => !supplied.has(path))) throw new Error('Add every recording listed in the manifest.');
     const db = await database();
     const transaction = db.transaction(['biomeManifests', 'recordings'], 'readwrite');
@@ -82,7 +82,7 @@ export class BiomePackLoader {
     return manifest;
   }
 
-  async exportFiles(id: string) {
+  static async exportFiles(id: string) {
     const db = await database();
     const manifest = await db.get('biomeManifests', id);
     if (!manifest || !id.startsWith(localPrefix)) throw new Error('Custom biome not found.');
@@ -96,7 +96,7 @@ export class BiomePackLoader {
     ];
   }
 
-  private paths(manifest: BiomePackManifest) {
+  private static paths(manifest: BiomePackManifest) {
     return [...new Set([
       ...(manifest.beds.rainTiers ?? []), ...(manifest.beds.windTiers ?? []),
       ...stemNames.map((key) => manifest.beds[key]), manifest.impulseResponseUrl,
@@ -122,7 +122,7 @@ export class BiomePackLoader {
     if (!manifest || signal.aborted) return;
     const definition = manifest;
     const decoded = new Map<string, AudioBuffer>();
-    await Promise.all(this.paths(manifest).map(async (path) => {
+    await Promise.all(BiomePackLoader.paths(manifest).map(async (path) => {
       try {
         const key = assetKey(definition, path);
         const cached = await db?.get('recordings', key).catch(() => undefined);

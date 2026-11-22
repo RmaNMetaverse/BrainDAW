@@ -52,7 +52,7 @@ export class NatureEngine {
     }
   }
 
-  async exportFiles(id: string) { return this.loader.exportFiles(id); }
+  static async exportFiles(id: string) { return BiomePackLoader.exportFiles(id); }
 
   private makeShimmer() {
     return new AudioWorkletNode(this.context, 'shimmer-reverb', { outputChannelCount: [2] });

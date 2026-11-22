@@ -1,6 +1,7 @@
 * text=auto eol=lf
 *.bat text eol=crlf
 *.opus binary
+*.m4a binary
 *.png binary
 *.ico binary
 *.icns binary

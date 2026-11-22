@@ -1,7 +1,8 @@
 import { AudioLines, Leaf, Waves } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { hapticTick } from '../../platform/platformBridge';
 import { useAudioStore, type Channel } from '../../store/useAudioStore';
-import { BasicControl } from '../controls/BasicControl';
+import { Fader } from '../controls/Fader';
 
 export const channels = [
   { id: 'brainwave', name: 'Brainwave', sub: 'Entrainment', Icon: AudioLines },
@@ -10,6 +11,7 @@ export const channels = [
 ] as const;
 
 export function toggleChannel(channel: Channel) {
+  hapticTick();
   useAudioStore.setState((state) => ({ [channel]: { ...state[channel], enabled: !state[channel].enabled } }));
 }
 
@@ -27,7 +29,7 @@ export function ChannelPanel({ channel, children }: { channel: Channel; children
       <div><h2>{name}</h2><p>{sub}</p></div>
       <button className="channel-toggle" aria-label={'Enable ' + name} aria-pressed={enabled} onClick={() => toggleChannel(channel)}><i />{enabled ? 'On' : 'Off'}</button>
     </header>
-    <BasicControl label={name + ' level'} value={volume} onChange={(value) => setChannelVolume(channel, value)} />
+    <Fader label={name + ' level'} value={volume} onChange={(value) => setChannelVolume(channel, value)} />
     {children}
   </section>;
 }

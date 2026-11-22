@@ -1,7 +1,10 @@
 import { noteName } from '../../audio/utils/musicTheory';
+import { factoryPresets } from '../../store/factoryPresets';
 import { useAudioStore } from '../../store/useAudioStore';
 import type { PadWaveform, ScaleId, SynthPadParams } from '../../types/audio';
-import { BasicControl, type ControlProps } from '../controls/BasicControl';
+import type { ControlProps } from '../controls/Fader';
+import { RotaryKnob } from '../controls/RotaryKnob';
+import { XYPad } from '../controls/XYPad';
 import { ChannelPanel } from './ChannelPanel';
 
 const controls: (Pick<ControlProps, 'label' | 'min' | 'max' | 'step' | 'unit'> & {
@@ -35,7 +38,12 @@ export function SynthPadPanel() {
       <label className="field"><span>Waveform</span><select value={params.waveform} onChange={(event) => setParam('waveform', event.target.value as PadWaveform)}>
         {Object.entries(waves).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
       </select></label>
-      {controls.map(({ key, ...control }) => <BasicControl key={key} {...control} value={params[key]} onChange={(value) => setParam(key, value)} />)}
     </div>
+    <XYPad x={(params.filterCutoffHz - 200) / 5800} y={params.shimmerAmount} xLabel="Cutoff" yLabel="Shimmer"
+      onChange={(x, shimmerAmount) => useAudioStore.setState((state) => ({
+        synthPad: { ...state.synthPad, filterCutoffHz: Math.round((200 + x * 5800) / 10) * 10, shimmerAmount },
+      }))} />
+    <div className="knob-grid">{controls.map(({ key, ...control }) => <RotaryKnob key={key} {...control}
+      value={params[key]} reset={factoryPresets[0].synthPad[key]} onChange={(value) => setParam(key, value)} />)}</div>
   </ChannelPanel>;
 }
