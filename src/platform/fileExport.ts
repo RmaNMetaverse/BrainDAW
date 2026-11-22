@@ -1,5 +1,5 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import { isDesktop } from './platformBridge';
+import { isDesktop, isMobile } from './platformBridge';
 
 export async function exportFile(name: string, contents: string | Uint8Array, mime: string) {
   const bytes = typeof contents === 'string' ? strToU8(contents) : contents;
@@ -7,6 +7,19 @@ export async function exportFile(name: string, contents: string | Uint8Array, mi
     const [{ save }, { writeFile }] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
     const path = await save({ defaultPath: name, filters: [{ name: 'BrainDAW file', extensions: [name.split('.').at(-1) ?? 'json'] }] });
     if (path) await writeFile(path, bytes);
+    return;
+  }
+  if (isMobile()) {
+    const [{ Directory, Filesystem }, { Share }] = await Promise.all([import('@capacitor/filesystem'), import('@capacitor/share')]);
+    let binary = '';
+    for (let start = 0; start < bytes.length; start += 16384) binary += String.fromCharCode(...bytes.subarray(start, start + 16384));
+    const { uri } = await Filesystem.writeFile({
+      path: 'exports/' + crypto.randomUUID() + '/' + name,
+      data: btoa(binary),
+      directory: Directory.Cache,
+      recursive: true,
+    });
+    await Share.share({ title: name, files: [uri] });
     return;
   }
   const blob = new Blob([new Uint8Array(bytes)], { type: mime });

@@ -1,4 +1,4 @@
-import { AudioLines, BookOpen, Pause, Play, Timer, Volume2, VolumeX } from 'lucide-react';
+import { AudioLines, BookOpen, Pause, Play, Settings2, Timer, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { audioEngine } from '../../audio/AudioEngineManager';
@@ -10,6 +10,8 @@ import { Fader } from '../controls/Fader';
 import { VisualizerCanvas } from '../controls/VisualizerCanvas';
 import { Modal } from '../modals/Modal';
 import { PresetManagerModal } from '../modals/PresetManagerModal';
+import { PlaybackSettingsModal } from '../modals/PlaybackSettingsModal';
+import { detectPlatform } from '../../platform/platformBridge';
 
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -28,6 +30,7 @@ export function MasterTransport() {
   const [custom, setCustom] = useState<NeuroScapePreset[]>([]);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [timerOpen, setTimerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const refresh = () => { void listPresets().then(setCustom).catch(() => undefined); };
   useEffect(refresh, []);
   const presets = [...factoryPresets, ...custom];
@@ -38,6 +41,7 @@ export function MasterTransport() {
   return <>
     <header className="brand" data-tauri-drag-region><span className="brand-icon"><AudioLines size={23} /></span><div><h1>BrainDAW</h1><span>NeuroScape Studio</span></div>
       <button className="secondary-button library-button" onClick={() => setLibraryOpen(true)}><BookOpen size={16} /> Preset library</button>
+      {detectPlatform() === 'capacitor-ios' && <button className="icon-button" aria-label="Playback settings" onClick={() => setSettingsOpen(true)}><Settings2 size={17} /></button>}
     </header>
     <section className="transport" aria-label="Master transport">
       <button className="play" onClick={() => void audioEngine.togglePlay()} disabled={busy}>
@@ -60,6 +64,7 @@ export function MasterTransport() {
       </div>
     </section>
     {libraryOpen && <PresetManagerModal onClose={() => setLibraryOpen(false)} onChange={refresh} />}
+    {settingsOpen && <PlaybackSettingsModal onClose={() => setSettingsOpen(false)} />}
     {timerOpen && <Modal label="Sleep timer" onClose={() => setTimerOpen(false)}>
       <div className="dialog-form">
         <label className="field"><span>Duration</span><select value={sleepTimerMin ?? ''} onChange={(event) => setSleepTimer(event.target.value ? Number(event.target.value) : null)}>

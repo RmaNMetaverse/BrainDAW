@@ -1,15 +1,30 @@
 import { useAudioStore } from '../store/useAudioStore';
+import { PlaybackOutput, prepareMobilePlayback } from '../platform/nativeAudio';
 import { BrainwaveEngine } from './BrainwaveEngine';
 import { NatureEngine } from './NatureEngine';
 import { SynthPadEngine } from './SynthPadEngine';
 import { gain } from './utils/audioGraph';
 import { smoothParam } from './utils/smoothing';
 
+async function loadWorklet(context: AudioContext, name: string) {
+  const url = new URL('worklets/' + name + '.worklet.js', document.baseURI).href;
+  try {
+    await context.audioWorklet.addModule(url);
+  } catch (error) {
+    const file = await fetch(url);
+    if (!file.ok) throw error;
+    const module = URL.createObjectURL(new Blob([await file.text()], { type: 'text/javascript' }));
+    try { await context.audioWorklet.addModule(module); }
+    finally { URL.revokeObjectURL(module); }
+  }
+}
+
 class AudioEngineManager {
   private context?: AudioContext;
   private master?: GainNode;
   private sleepGain?: GainNode;
   private meter?: AnalyserNode;
+  private playbackOutput?: PlaybackOutput;
   private brainwave?: BrainwaveEngine;
   private nature?: NatureEngine;
   private pad?: SynthPadEngine;
@@ -26,8 +41,7 @@ class AudioEngineManager {
     this.context = context;
     try {
       await context.resume();
-      await Promise.all(['noise-generator', 'granular-cloud', 'shimmer-reverb'].map((name) =>
-        context.audioWorklet.addModule(new URL('worklets/' + name + '.worklet.js', document.baseURI).href)));
+      await Promise.all(['noise-generator', 'granular-cloud', 'shimmer-reverb'].map((name) => loadWorklet(context, name)));
       this.master = gain(context, 0);
       this.sleepGain = gain(context, 1);
       this.meter = context.createAnalyser();
@@ -38,7 +52,8 @@ class AudioEngineManager {
       limiter.ratio.setValueAtTime(12, context.currentTime);
       limiter.attack.setValueAtTime(0.003, context.currentTime);
       limiter.release.setValueAtTime(0.15, context.currentTime);
-      this.master.connect(limiter).connect(this.sleepGain).connect(this.meter).connect(context.destination);
+      this.master.connect(limiter).connect(this.sleepGain).connect(this.meter);
+      this.playbackOutput = new PlaybackOutput(context, this.meter);
       this.brainwave = new BrainwaveEngine(context);
       this.nature = new NatureEngine(context, (biomeLoadingState, usingProceduralFallback) =>
         useAudioStore.setState({ biomeLoadingState, usingProceduralFallback }));
@@ -113,8 +128,11 @@ class AudioEngineManager {
     if (useAudioStore.getState().busy || useAudioStore.getState().isPlaying) return;
     useAudioStore.setState({ busy: true, error: null });
     try {
+      const native = prepareMobilePlayback().catch(() => undefined);
       await this.init();
+      await native;
       await this.context?.resume();
+      await this.playbackOutput?.play();
       if (this.resetOnPlay) {
         this.resetOnPlay = false;
         this.brainwave?.setTimeline(useAudioStore.getState().timeline);
@@ -131,15 +149,16 @@ class AudioEngineManager {
     }
   }
 
-  async pause(finished = false) {
+  async pause(finished = false, reset = finished) {
     if (!useAudioStore.getState().isPlaying || useAudioStore.getState().busy) return;
     useAudioStore.setState({ isPlaying: false, busy: true });
-    this.resetOnPlay = finished;
+    this.resetOnPlay = reset;
     this.updateMaster();
     clearInterval(this.timer);
     try {
       if (!finished) await new Promise((resolve) => setTimeout(resolve, 350));
-      if (this.context?.state === 'running') await this.context.suspend();
+      this.playbackOutput?.pause();
+      if (this.context && this.context.state !== 'closed' && this.context.state !== 'suspended') await this.context.suspend();
     } finally {
       useAudioStore.setState({ busy: false });
     }

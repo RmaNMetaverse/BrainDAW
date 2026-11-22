@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BrainDAW</string>
+    <string name="title_activity_main">BrainDAW</string>
+    <string name="package_name">com.rmanmetaverse.braindaw</string>
+    <string name="custom_url_scheme">com.rmanmetaverse.braindaw</string>
+</resources>

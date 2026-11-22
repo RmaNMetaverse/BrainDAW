@@ -11,6 +11,10 @@
   --surface: rgb(17 23 35 / 68%);
   --line: rgb(230 240 255 / 11%);
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --inset-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --inset-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --inset-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --inset-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 }
 * { box-sizing: border-box; }
 body {
@@ -23,7 +27,7 @@ button, select, input { font: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: 0.65; cursor: wait; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-.studio { max-width: 1500px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(17px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
+.studio { max-width: 1500px; margin: 0 auto; padding: max(24px, var(--inset-top)) max(24px, var(--inset-right)) max(17px, var(--inset-bottom)) max(24px, var(--inset-left)); }
 [data-platform="tauri-macos"] .studio { padding-top: 37px; }
 .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
 .brand-icon, .channel-icon { display: grid; place-items: center; width: 43px; height: 43px; flex-shrink: 0; border-radius: 12px; background: color-mix(in srgb, var(--accent) 13%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); }
@@ -98,6 +102,8 @@ output, .beat-display strong { color: var(--accent); font: 500 .75rem var(--mono
 .studio-dialog header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .studio-dialog h2 { font-size: 1.13rem; font-weight: 650; }
 .studio-dialog input:not([type=file]) { width: 100%; min-width: 0; background: #182235; border: 1px solid var(--line); padding: 8px; border-radius: 7px; color: #edf3ff; }
+.mix-option { display: flex; gap: 10px; align-items: center; }
+.studio-dialog .mix-option input { width: 18px; height: 18px; }
 .dialog-form { display: grid; gap: 12px; }
 .dialog-actions { display: flex; justify-content: space-between; gap: 9px; margin-top: 10px; }
 .timeline-stage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; border: 1px solid var(--line); padding: 10px; border-radius: 8px; }
@@ -123,7 +129,8 @@ output, .beat-display strong { color: var(--accent); font: 500 .75rem var(--mono
 .biome-import { display: grid; gap: 4px; padding: 10px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); font-size: .75rem; }
 .biome-import button { display: flex; align-items: center; gap: 7px; color: var(--accent); justify-self: start; font-size: .81rem; }
 @media (max-width: 1023px) {
-  .pinned { position: sticky; top: 0; z-index: 2; background: #0b1019f5; padding: 8px 0 1px; }
+  .studio { padding-top: 8px; }
+  .pinned { position: sticky; top: 0; z-index: 2; background: #0b1019f5; padding: max(8px, var(--inset-top)) 0 1px; }
   .console { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .console[data-selected=brainwave] .synthPad, .console[data-selected=nature] .brainwave, .console[data-selected=synthPad] .nature { display: none; }
   .mini-mixer { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 8px 13px; margin-bottom: 12px; }
@@ -137,8 +144,9 @@ output, .beat-display strong { color: var(--accent); font: 500 .75rem var(--mono
   .tab[aria-pressed=true] { color: var(--accent); }
 }
 @media (max-width: 767px) {
-  .studio { padding: max(3px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
-  .pinned { padding-top: max(5px, env(safe-area-inset-top)); }
+  .studio { padding: 0 max(10px, var(--inset-right)) max(14px, var(--inset-bottom)) max(10px, var(--inset-left)); }
+  .pinned { padding-top: max(5px, var(--inset-top)); }
+  .studio-dialog input:not([type=file]), .studio-dialog select { font-size: 1rem; }
   .brand { margin: 0 0 7px; gap: 7px; }
   .brand h1 { font-size: 1.08rem; }
   .brand-icon { width: 32px; height: 32px; }

@@ -10,8 +10,12 @@ export function detectPlatform(): RuntimePlatform {
 }
 
 export function isDesktop() { return detectPlatform().startsWith('tauri-'); }
+export function isMobile() { return detectPlatform().startsWith('capacitor-'); }
 
 export function hapticTick() {
-  // Native shells supply their own feedback; the browser may expose vibration.
-  if (detectPlatform() === 'web' && navigator.maxTouchPoints > 0) navigator.vibrate?.(10);
+  if (isMobile()) {
+    void import('@capacitor/haptics').then(({ Haptics, ImpactStyle }) => Haptics.impact({ style: ImpactStyle.Light })).catch(() => undefined);
+  } else if (detectPlatform() === 'web' && navigator.maxTouchPoints > 0) {
+    navigator.vibrate?.(10);
+  }
 }

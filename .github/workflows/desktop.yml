@@ -67,6 +67,10 @@ jobs:
         with:
           path: installers
           merge-multiple: true
-      - run: gh release create "$GITHUB_REF_NAME" installers/* --verify-tag --title "BrainDAW Desktop ${GITHUB_REF_NAME#desktop-v}" --notes-file .github/release-notes/desktop.md
+      - run: |
+          mapfile -d '' -t assets < <(find installers -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.msi' \) -print0)
+          test "${#assets[@]}" -eq 3
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" --verify-tag \
+            --title "BrainDAW Desktop ${GITHUB_REF_NAME#desktop-v}" --notes-file .github/release-notes/desktop.md
         env:
           GH_TOKEN: ${{ github.token }}
