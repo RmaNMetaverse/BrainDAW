@@ -10,10 +10,6 @@ on:
         type: choice
         default: both
         options: [both, android, ios]
-      publish:
-        description: Publish verified packages from main as GitHub prereleases
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -105,7 +101,7 @@ jobs:
           if-no-files-found: error
 
   release-android:
-    if: startsWith(github.ref, 'refs/tags/android-v') || (github.ref == 'refs/heads/main' && inputs.publish)
+    if: startsWith(github.ref, 'refs/tags/android-v')
     needs: android
     runs-on: ubuntu-latest
     permissions:
@@ -116,16 +112,14 @@ jobs:
         with:
           name: Android
       - run: |
-          tag="android-v$(jq -r .version package.json)"
-          target=(--target "$GITHUB_SHA")
-          if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag="$GITHUB_REF_NAME"; target=(--verify-tag); fi
-          gh release create "$tag" BrainDAW-Android-* "${target[@]}" --prerelease \
-            --title "BrainDAW Android ${tag#android-v} preview" --notes-file .github/release-notes/android.md
+          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' | grep -qx false; then exit 0; fi
+          gh release create "$GITHUB_REF_NAME" BrainDAW-Android-* --verify-tag --prerelease \
+            --title "BrainDAW Android ${GITHUB_REF_NAME#android-v} preview" --notes-file .github/release-notes/android.md
         env:
           GH_TOKEN: ${{ github.token }}
 
   release-ios:
-    if: startsWith(github.ref, 'refs/tags/ios-v') || (github.ref == 'refs/heads/main' && inputs.publish)
+    if: startsWith(github.ref, 'refs/tags/ios-v')
     needs: ios
     runs-on: ubuntu-latest
     permissions:
@@ -136,10 +130,8 @@ jobs:
         with:
           name: iOS-Simulator
       - run: |
-          tag="ios-v$(jq -r .version package.json)"
-          target=(--target "$GITHUB_SHA")
-          if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag="$GITHUB_REF_NAME"; target=(--verify-tag); fi
-          gh release create "$tag" BrainDAW-iOS-Simulator.zip "${target[@]}" --prerelease \
-            --title "BrainDAW iOS ${tag#ios-v} Simulator preview" --notes-file .github/release-notes/ios.md
+          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' | grep -qx false; then exit 0; fi
+          gh release create "$GITHUB_REF_NAME" BrainDAW-iOS-Simulator.zip --verify-tag --prerelease \
+            --title "BrainDAW iOS ${GITHUB_REF_NAME#ios-v} Simulator preview" --notes-file .github/release-notes/ios.md
         env:
           GH_TOKEN: ${{ github.token }}
