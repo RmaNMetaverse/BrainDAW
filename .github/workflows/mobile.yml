@@ -42,6 +42,7 @@ jobs:
       - working-directory: mobile/android
         run: ./gradlew :app:assembleDebug :app:assembleRelease :app:bundleRelease
       - name: Find the previous signed APK
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -56,6 +57,7 @@ jobs:
             gh release download android-v0.2.1 --pattern BrainDAW-Android-debug.apk --output "$RUNNER_TEMP/bootstrap.apk"
           fi
       - name: Sign and verify the GitHub APK
+        shell: bash
         env:
           ANDROID_RELEASE_KEYSTORE: ${{ secrets.ANDROID_RELEASE_KEYSTORE }}
           ANDROID_RELEASE_PASSWORD: ${{ secrets.ANDROID_RELEASE_PASSWORD }}
@@ -96,7 +98,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Android
-          path: packages/*
+          path: |
+            packages/BrainDAW-Android.apk
+            packages/BrainDAW-Android-unsigned.aab
           if-no-files-found: error
 
   ios:
@@ -149,9 +153,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: Android
-      - run: |
-          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' | grep -qx false; then exit 0; fi
-          gh release create "$GITHUB_REF_NAME" BrainDAW-Android-* --verify-tag --prerelease \
+      - shell: bash
+        run: |
+          assets=(BrainDAW-Android.apk BrainDAW-Android-unsigned.aab)
+          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' | grep -qx false; then
+            published=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name')
+            for asset in "${assets[@]}"; do
+              if ! grep -Fxq "$asset" <<< "$published"; then
+                gh release upload "$GITHUB_REF_NAME" "$asset"
+              fi
+            done
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" --verify-tag --prerelease \
             --title "BrainDAW Android ${GITHUB_REF_NAME#android-v} preview" --notes-file .github/release-notes/android.md
         env:
           GH_TOKEN: ${{ github.token }}
