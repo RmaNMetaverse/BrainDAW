@@ -1,8 +1,8 @@
-# BrainDAW Android preview
+# BrainDAW Android
 
-The searchable library now includes 33 factory presets, including three new Lucid Dreaming mixes for bedtime, returning to sleep, or speaker playback.
+- `BrainDAW-Android.apk` is the signed APK for direct installation. Starting with v0.2.2, GitHub builds use a permanent signing key and support in-place updates.
+- `BrainDAW-Android-unsigned.aab` is the App Bundle for signing with a Google Play upload key.
 
-- `BrainDAW-Android-debug.apk` can be installed for testing.
-- `BrainDAW-Android-unsigned.aab` is the production build output for signing with a Play upload key.
+Switching from the old `BrainDAW-Android-debug.apk` requires a one-time reinstall because the signing certificate changed. Before uninstalling, export saved mixes using **Presets → Export current** and export custom biomes using **Nature → Export biome**. Keep those files outside the app and import them after installing the signed APK. If a restored preset uses a custom biome, reselect the imported biome and save the mix again.
 
-The GitHub Actions emulator test verifies first-click audio, the media foreground service, playback with the display off, and pause through Android media controls. Physical devices still need lock-screen and battery-management testing. The debug APK uses a build-machine debug key, so an update from another key can require uninstalling the previous build.
+GitHub Actions verifies the signing certificate, installation over a lower version code, app launch, and background audio on an emulator. The first signed release uses a private test copy of the previous preview signed with the new key to exercise the update path.

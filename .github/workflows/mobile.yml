@@ -40,7 +40,49 @@ jobs:
       - run: npm test
       - run: npm run mobile:sync -- android
       - working-directory: mobile/android
-        run: ./gradlew :app:assembleDebug :app:bundleRelease
+        run: ./gradlew :app:assembleDebug :app:assembleRelease :app:bundleRelease
+      - name: Find the previous signed APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" | jq -r --arg current "$GITHUB_REF_NAME" '
+            .[] | select(.draft == false and .tag_name != $current and (.tag_name | startswith("android-v")))
+            | select(any(.assets[]; .name == "BrainDAW-Android.apk")) | .tag_name
+          ' | sort -Vr | sed -n '1p')
+          if [[ -n "$previous_tag" ]]; then
+            gh release download "$previous_tag" --pattern BrainDAW-Android.apk --output "$RUNNER_TEMP/previous.apk"
+          else
+            # The first stable release uses a private, re-signed fixture from the last debug preview.
+            gh release download android-v0.2.1 --pattern BrainDAW-Android-debug.apk --output "$RUNNER_TEMP/bootstrap.apk"
+          fi
+      - name: Sign and verify the GitHub APK
+        env:
+          ANDROID_RELEASE_KEYSTORE: ${{ secrets.ANDROID_RELEASE_KEYSTORE }}
+          ANDROID_RELEASE_PASSWORD: ${{ secrets.ANDROID_RELEASE_PASSWORD }}
+        run: |
+          : "${ANDROID_RELEASE_KEYSTORE:?Missing Android release keystore}"
+          : "${ANDROID_RELEASE_PASSWORD:?Missing Android release keystore password}"
+          umask 077
+          keystore=$(mktemp "$RUNNER_TEMP/android-keystore.XXXXXX")
+          trap 'rm -f -- "$keystore"' EXIT
+          printf '%s' "$ANDROID_RELEASE_KEYSTORE" | base64 --decode > "$keystore"
+          apksigner="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          signing=(--ks "$keystore" --ks-type PKCS12 --ks-key-alias braindaw-github --ks-pass env:ANDROID_RELEASE_PASSWORD)
+          expected_sha256=129978d4ff3f3aa554ef6d77b897227e1c608866ae6332eb8f7f5f6f1520ffaa
+          mkdir packages
+          "$apksigner" sign "${signing[@]}" --out packages/BrainDAW-Android.apk \
+            mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if [[ -f "$RUNNER_TEMP/bootstrap.apk" ]]; then
+            "$apksigner" sign "${signing[@]}" --out "$RUNNER_TEMP/previous.apk" "$RUNNER_TEMP/bootstrap.apk"
+          fi
+          for apk in "$RUNNER_TEMP/previous.apk" packages/BrainDAW-Android.apk; do
+            "$apksigner" verify --print-certs "$apk" | grep -Fx "Signer #1 certificate SHA-256 digest: $expected_sha256"
+          done
+          if [[ "$GITHUB_REF_NAME" == android-v* ]]; then
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging packages/BrainDAW-Android.apk > "$RUNNER_TEMP/apk-badging.txt"
+            grep -F " versionName='${GITHUB_REF_NAME#android-v}' " "$RUNNER_TEMP/apk-badging.txt"
+          fi
+          cp mobile/android/app/build/outputs/bundle/release/*.aab packages/BrainDAW-Android-unsigned.aab
       - name: Enable hardware acceleration for the emulator
         run: sudo chmod a+rw /dev/kvm
       - uses: ReactiveCircus/android-emulator-runner@v2
@@ -50,11 +92,7 @@ jobs:
           target: google_apis
           profile: pixel_6
           disable-animations: true
-          script: node scripts/check-android.mjs
-      - run: |
-          mkdir packages
-          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk packages/BrainDAW-Android-debug.apk
-          cp mobile/android/app/build/outputs/bundle/release/*.aab packages/BrainDAW-Android-unsigned.aab
+          script: node scripts/check-android-upgrade.mjs "$RUNNER_TEMP/previous.apk" packages/BrainDAW-Android.apk && node scripts/check-android.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: Android
