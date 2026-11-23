@@ -17,9 +17,9 @@ function installedPackage() {
   return { versionCode, firstInstallTime };
 }
 
-assert.match(adb('install', previousApk), /\bSuccess$/);
+assert.match(adb('install', '--no-incremental', previousApk), /^Success$/m);
 const previous = installedPackage();
-assert.match(adb('install', '-r', updatedApk), /\bSuccess$/);
+assert.match(adb('install', '--no-incremental', '-r', updatedApk), /^Success$/m);
 const updated = installedPackage();
 assert(updated.versionCode > previous.versionCode, 'An update must increase the Android version code.');
 assert.equal(updated.firstInstallTime, previous.firstInstallTime, 'The original installation must survive the update.');

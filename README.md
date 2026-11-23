@@ -40,7 +40,7 @@ The [Actions workflows](https://github.com/RmaNMetaverse/BrainDAW/actions) valid
 
 ### Android APK updates
 
-Use `BrainDAW-Android.apk` from the Android release. Starting with Android v0.2.2, GitHub APKs share a signing certificate and install over earlier APKs from this release line. GitHub Actions installs the previous signed APK and tests the update before publication.
+Use `BrainDAW-Android.apk` from the Android release. Starting with Android v0.2.3, GitHub APKs share a signing certificate and install over earlier APKs from this release line. GitHub Actions installs the previous signed APK and tests the update before publication.
 
 Earlier `BrainDAW-Android-debug.apk` downloads used different signing keys. Before removing one, load each saved mix and use **Presets → Export current**. Use **Nature → Export biome** for any custom biomes. Save the files outside the app, then uninstall the old preview, install the signed APK, and import your files. If a restored preset uses a custom biome, reselect the imported biome and save the mix again.
 
