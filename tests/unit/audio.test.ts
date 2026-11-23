@@ -1,8 +1,17 @@
 import { expect, test, vi } from 'vitest';
 import { splitFrequencies } from '../../src/audio/BrainwaveEngine';
+import { factoryPresets } from '../../src/store/factoryPresets';
+import { parsePreset } from '../../src/store/presets';
 import { initialVoicing, midiToHz, neighboringNotes } from '../../src/audio/utils/musicTheory';
 import { equalPowerCrossfade, smoothParam } from '../../src/audio/utils/smoothing';
 import { ShuffleBag } from '../../src/audio/utils/shuffleBag';
+
+test('every factory preset has a unique ID and survives preset JSON validation', () => {
+  expect(new Set(factoryPresets.map((preset) => preset.id)).size).toBe(factoryPresets.length);
+  for (const preset of factoryPresets) {
+    expect(parsePreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
+  }
+});
 
 test('binaural tones preserve the requested center and separation', () => {
   expect(splitFrequencies(144, 6)).toEqual([141, 147]);

@@ -71,6 +71,31 @@ test('the installed web app starts field audio with the network disconnected', a
   await expect(page.getByText('Field recordings active')).toBeVisible();
 });
 
+test('searchable factory sessions apply their sound settings and preserve metadata in exports', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Preset library' }).click();
+  const library = page.getByRole('dialog', { name: 'Preset library' });
+  await library.getByLabel('Category').selectOption('psychedelic');
+  await library.getByRole('searchbox', { name: 'Search presets' }).fill('magic mushroom');
+  await expect(library.getByRole('button', { name: /Warm Drift/ })).toHaveCount(0);
+  await library.getByRole('button', { name: /Psilocybin.*Bloom/ }).click();
+  await expect(page.getByLabel('Session preset')).toHaveValue('psilocybin-bloom');
+  await expect(page.getByLabel('Entrainment mode')).toHaveValue('hybrid');
+  await expect(page.getByRole('button', { name: 'Session timeline 3 stages' })).toBeVisible();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Preset library' }).click();
+  const download = page.waitForEvent('download');
+  await library.getByRole('button', { name: 'Export current' }).click();
+  const stream = await (await download).createReadStream();
+  const chunks = await stream.toArray();
+  const preset = JSON.parse(Buffer.concat(chunks).toString());
+  expect(preset.category).toBe('psychedelic');
+  expect(preset.description).toContain('rainforest');
+  expect(preset.timeline).toHaveLength(3);
+});
+
 test('mobile can switch between channels while transport and mixer remain available', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

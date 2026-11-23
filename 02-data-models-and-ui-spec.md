@@ -95,7 +95,7 @@ export interface NeuroScapePreset {
   id: string;
   name: string;
   description?: string;
-  category?: 'sleep' | 'meditation' | 'focus' | 'lucid' | 'custom';
+  category?: 'sleep' | 'meditation' | 'focus' | 'lucid' | 'psychedelic' | 'custom';
   createdAt: string;
   masterVolume: number;
   sleepTimerMin: number | null; // null = infinite
@@ -145,7 +145,7 @@ Use **Zustand v5** with `subscribeWithSelector` middleware:
 
 ## 3. Curated Factory Presets (`src/store/factoryPresets.ts`)
 
-Ship 6 ready-to-play presets demonstrating the full range of the 3 engines:
+The library includes these six original presets and additional mixes for meditation, focus, dreamwork, and psychedelic-inspired sound design. The additional presets include searchable descriptions and identify beat frequencies as sound-design settings.
 1. **`deep-theta-rainforest`** — *Deep Theta Rainforest*: `6.0 Hz` Theta (`144 Hz` carrier, gentle `0.1 Hz` breathing swell) + Jungle biome (`rainIntensity: 0.45`, `wildlifeDensity: 0.6`, `thunderProbability: 0.25`, `surrealDepth: 0.25`) + `432 Hz` D Dorian warm sine/glass pad.
 2. **`surreal-lucid-canopy`** — *Surreal Lucid Canopy*: `5.5 Hz` Theta hybrid mode + Jungle biome (`surrealDepth: 0.78`, `wildlifeDensity: 0.55`, `reverbSpace: 0.85`) + C Lydian shimmering glass pad (`shimmerAmount: 0.7`, `evolutionSpeed: 0.55`).
 3. **`delta-midnight-storm`** — *Delta Midnight Storm*: `2.0 Hz` Delta (`110 Hz` carrier) + Rainstorm (`rainIntensity: 0.85`, `thunderProbability: 0.6`, `thunderDistance: 0.7`, `surrealDepth: 0.15`) + Deep A2 Sus2 sub-warm drone (`filterCutoffHz: 550 Hz`) + `60 min` sleep timer.

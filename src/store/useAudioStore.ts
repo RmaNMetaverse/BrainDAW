@@ -11,6 +11,8 @@ type StudioState = Pick<NeuroScapePreset, 'masterVolume' | 'sleepTimerMin' | 'fa
   error: string | null;
   activePresetId: string;
   activePresetName: string;
+  activePresetDescription?: NeuroScapePreset['description'];
+  activePresetCategory?: NeuroScapePreset['category'];
   sleepTimerRemainingSec: number | null;
   activeMobileTab: Channel;
   biomeLoadingState: string;
@@ -32,6 +34,7 @@ type StudioState = Pick<NeuroScapePreset, 'masterVolume' | 'sleepTimerMin' | 'fa
 function presetState(preset: NeuroScapePreset) {
   return {
     activePresetId: preset.id, activePresetName: preset.name, masterVolume: preset.masterVolume,
+    activePresetDescription: preset.description, activePresetCategory: preset.category,
     sleepTimerMin: preset.sleepTimerMin, sleepTimerRemainingSec: preset.sleepTimerMin === null ? null : preset.sleepTimerMin * 60,
     fadeOutSec: preset.fadeOutSec, brainwave: preset.brainwave, nature: preset.nature, synthPad: preset.synthPad,
     timeline: preset.timeline ?? [], sessionElapsedSec: 0, actualBeatHz: preset.brainwave.beatHz,

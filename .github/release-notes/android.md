@@ -1,5 +1,7 @@
 # BrainDAW Android preview
 
+The searchable library now includes 30 factory presets, with new meditation, dreamwork, and psychedelic-inspired soundscapes.
+
 - `BrainDAW-Android-debug.apk` can be installed for testing.
 - `BrainDAW-Android-unsigned.aab` is the production build output for signing with a Play upload key.
 

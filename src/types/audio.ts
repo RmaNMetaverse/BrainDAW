@@ -26,6 +26,8 @@ export type ScaleId =
 
 export type PadWaveform = 'sine' | 'triangle' | 'warm_saw' | 'glass_pad';
 
+export type PresetCategory = 'sleep' | 'meditation' | 'focus' | 'lucid' | 'psychedelic' | 'custom';
+
 export interface BrainwaveParams {
   enabled: boolean;
   volume: number;              // 0.0 to 1.0
@@ -84,7 +86,7 @@ export interface NeuroScapePreset {
   id: string;
   name: string;
   description?: string;
-  category?: 'sleep' | 'meditation' | 'focus' | 'lucid' | 'custom';
+  category?: PresetCategory;
   createdAt: string;
   masterVolume: number;
   sleepTimerMin: number | null; // null = infinite

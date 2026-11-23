@@ -1,4 +1,5 @@
 import { database } from './database';
+import { presetCategories } from './factoryPresets';
 import { useAudioStore } from './useAudioStore';
 import type { BrainwaveParams, NatureParams, NeuroScapePreset, SessionStage, SynthPadParams } from '../types/audio';
 
@@ -8,13 +9,14 @@ const number = (value: unknown, min: number, max: number) => typeof value === 'n
 const string = (value: unknown, limit: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= limit;
 const choice = (value: unknown, values: readonly string[]) => typeof value === 'string' && values.includes(value);
 const levels = (value: Obj, keys: string[]) => keys.every((key) => number(value[key], 0, 1));
+const categories = Object.keys(presetCategories);
 
 export function parsePreset(value: unknown): NeuroScapePreset {
   const data = object(value);
   const brain = object(data.brainwave), nature = object(data.nature), pad = object(data.synthPad);
   const valid = string(data.id, 100) && string(data.name, 80) && typeof data.createdAt === 'string' && Number.isFinite(Date.parse(data.createdAt)) &&
     (data.description === undefined || string(data.description, 1000)) &&
-    (data.category === undefined || choice(data.category, ['sleep', 'meditation', 'focus', 'lucid', 'custom'])) &&
+    (data.category === undefined || choice(data.category, categories)) &&
     number(data.masterVolume, 0, 1) && (data.sleepTimerMin === null || number(data.sleepTimerMin, 1 / 60, 480)) &&
     number(data.fadeOutSec, 1, 120) && [brain, nature, pad].every((channel) => typeof channel.enabled === 'boolean' && number(channel.volume, 0, 1)) &&
     choice(brain.preset, ['delta', 'theta', 'alpha', 'smr', 'beta', 'gamma', 'custom']) &&
@@ -58,7 +60,8 @@ export function snapshotPreset(name?: string): NeuroScapePreset {
   const state = useAudioStore.getState();
   return {
     id: name ? 'preset-' + crypto.randomUUID() : state.activePresetId,
-    name: name ?? state.activePresetName, category: name ? 'custom' : undefined,
+    name: name ?? state.activePresetName, category: name ? 'custom' : state.activePresetCategory,
+    description: name ? undefined : state.activePresetDescription,
     createdAt: new Date().toISOString(),
     masterVolume: state.masterVolume, sleepTimerMin: state.sleepTimerMin, fadeOutSec: state.fadeOutSec,
     brainwave: state.brainwave, nature: state.nature, synthPad: state.synthPad, timeline: state.timeline,
@@ -84,7 +87,8 @@ export async function restoreStudio() {
   }
   let save: ReturnType<typeof setTimeout>;
   const select = (state: ReturnType<typeof useAudioStore.getState>) =>
-    [state.activePresetId, state.brainwave, state.nature, state.synthPad, state.masterVolume, state.sleepTimerMin, state.fadeOutSec, state.timeline];
+    [state.activePresetId, state.activePresetCategory, state.activePresetDescription, state.brainwave, state.nature, state.synthPad,
+      state.masterVolume, state.sleepTimerMin, state.fadeOutSec, state.timeline];
   useAudioStore.subscribe(select, () => {
     clearTimeout(save);
     save = setTimeout(() => { void db.put('settings', snapshotPreset(), 'last').catch(() => undefined); }, 260);

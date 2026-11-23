@@ -2,7 +2,7 @@ import { AudioLines, BookOpen, Pause, Play, Settings2, Timer, Volume2, VolumeX }
 import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { audioEngine } from '../../audio/AudioEngineManager';
-import { factoryPresets } from '../../store/factoryPresets';
+import { factoryPresetGroups, factoryPresets, presetCategories } from '../../store/factoryPresets';
 import { listPresets } from '../../store/presets';
 import { useAudioStore } from '../../store/useAudioStore';
 import type { NeuroScapePreset } from '../../types/audio';
@@ -51,7 +51,13 @@ export function MasterTransport() {
       <label className="field preset"><span>Session preset</span><select value={activePresetId} onChange={(event) => {
         const preset = presets.find(({ id }) => id === event.target.value);
         if (preset) loadPreset(preset);
-      }}>{presets.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+      }}>
+        {factoryPresetGroups.map(({ label, presets }) => <optgroup key={label} label={label}>
+          {presets.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+        </optgroup>)}
+        {custom.length > 0 && <optgroup label={presetCategories.custom}>
+          {custom.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+        </optgroup>}
         {!presets.some(({ id }) => id === activePresetId) && <option value={activePresetId}>{state.activePresetName}</option>}
       </select></label>
       <VisualizerCanvas />
