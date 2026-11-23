@@ -1,5 +1,8 @@
 # BrainDAW
 
+https://github.com/user-attachments/assets/6a23992e-97c6-41fa-ad80-879dcd7f5b9c
+
+
 BrainDAW is a single-window sound studio that combines brainwave tones, field-recorded nature, and generative synth pads. The same interface ships as an offline web app, a Tauri desktop app, and a Capacitor mobile app.
 
 | Platform | Distribution |
@@ -11,6 +14,8 @@ BrainDAW is a single-window sound studio that combines brainwave tones, field-re
 | iOS | Simulator app in the iOS preview. Device and TestFlight builds require Apple signing and provisioning. |
 
 ## Use the studio
+https://github.com/user-attachments/assets/4ddbce67-421e-4e2a-969d-102f1ce68fca
+
 
 Select a session preset and press Play. Use stereo headphones for binaural playback. Each channel has a level and an independent on/off switch. The master transport controls volume and the sleep timer. Space toggles playback, M toggles master mute, and 1–3 toggle the three channels.
 
