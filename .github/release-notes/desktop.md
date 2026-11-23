@@ -2,7 +2,7 @@
 
 This Tauri release includes the same studio as BrainDAW Web, plus native preset and biome file dialogs and tray controls for playback, mute, and quit.
 
-The searchable library now includes 30 factory presets for meditation, focus, sleep, dreamwork, and psychedelic-inspired sound design.
+The searchable library now includes 33 factory presets, including three new Lucid Dreaming mixes for bedtime, returning to sleep, or speaker playback.
 
 - **Windows x64** — Choose the EXE or MSI installer. Both use Microsoft Edge WebView2.
 - **macOS** — The universal disk image contains the app for Apple Silicon and Intel.

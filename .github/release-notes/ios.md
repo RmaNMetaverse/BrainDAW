@@ -1,6 +1,6 @@
 # BrainDAW iOS Simulator preview
 
-The searchable library now includes 30 factory presets, with new meditation, dreamwork, and psychedelic-inspired soundscapes.
+The searchable library now includes 33 factory presets, including three new Lucid Dreaming mixes for bedtime, returning to sleep, or speaker playback.
 
 `BrainDAW-iOS-Simulator.zip` contains an app built for iOS Simulator. GitHub Actions signs it ad hoc and verifies that it installs and launches on the simulator.
 

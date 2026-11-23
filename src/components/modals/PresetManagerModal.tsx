@@ -90,6 +90,7 @@ export function PresetManagerModal({ onClose, onChange }: { onClose: () => void;
       <summary>Research and listening notes</summary>
       <p>Beat rates shape the rhythm you hear. Experiments on brain responses to auditory beats report mixed results. These sounds are artistic interpretations, and there is no validated audio recipe for intoxication, hallucinations, or an out-of-body experience.</p>
       <p>Human studies measured changes across several brain rhythms after psilocybin and changes in frontal theta coordination after THC. Sleep-onset imagery and lucid dreaming have been studied in sleep experiments. One clinical report elicited an out-of-body sensation with direct electrical stimulation.</p>
+      <p>The Lucid Dreaming mixes are designed for bedtime listening or settling back after waking. Lucid REM studies have verified communication with some dreamers. A beat rate for reliably inducing lucidity has not been established.</p>
       <ul>
         <li>Auditory beats. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7082494/" target="_blank" rel="noreferrer">Orozco Perez et al.</a> · <a href="https://doi.org/10.3389/fnhum.2017.00557" target="_blank" rel="noreferrer">López-Caballero &amp; Escera</a></li>
         <li>Brain activity after <a href="https://pubmed.ncbi.nlm.nih.gov/24048847/" target="_blank" rel="noreferrer">psilocybin</a> and <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3055738/" target="_blank" rel="noreferrer">THC</a>.</li>

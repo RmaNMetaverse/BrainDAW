@@ -105,3 +105,18 @@ test('mobile can switch between channels while transport and mixer remain availa
   await expect(page.getByRole('region', { name: 'Brainwave channel' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 });
+
+test('lucid dreaming sessions are searchable and the speaker mix loads its isochronic timeline', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Preset library' }).click();
+  const library = page.getByRole('dialog', { name: 'Preset library' });
+  await library.getByLabel('Category').selectOption('lucid');
+  await library.getByRole('searchbox', { name: 'Search presets' }).fill('lucid dreaming');
+  await expect(library.getByRole('button', { name: /Lucid Dreaming.*Bedtime Drift/ })).toBeVisible();
+  await expect(library.getByRole('button', { name: /Lucid Dreaming.*Return to Sleep/ })).toBeVisible();
+  await library.getByRole('button', { name: /Lucid Dreaming.*Speaker Mix/ }).click();
+  await expect(page.getByLabel('Session preset')).toHaveValue('lucid-dreaming-speakers');
+  await expect(page.getByLabel('Entrainment mode')).toHaveValue('isochronic');
+  await page.getByRole('button', { name: 'Session timeline 2 stages' }).click();
+  await expect(page.getByLabel('Target beat (Hz)').last()).toHaveValue('4.9');
+});
