@@ -29,9 +29,9 @@ export function detectPlatform(): RuntimePlatform {
 
 ### `src/platform/backgroundAudio.ts`
 Handles lock-screen controls and continuous playback:
-- **Web / PWA:** Register `navigator.mediaSession` metadata (Preset Title, "NeuroScape Studio", artwork) and `play` / `pause` / `stop` action handlers.
-- **iOS (Capacitor):** Activate native `AVAudioSession` in `.playback` category (with optional `.mixWithOthers` toggle in settings) and maintain a silent/media background audio session so `WKWebView` does not suspend `AudioContext` when the screen locks.
-- **Android (Capacitor):** Start an Android `ForegroundService` (`FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK`) with a persistent lock-screen MediaStyle notification displaying the active preset, Sleep Timer countdown, and Play/Pause button.
+- **Web / PWA** — Register media controls and request an `ambient` audio session where the browser exposes that API. The browser controls playback when the tab is hidden or the phone is locked.
+- **iOS (Capacitor)** — Activate the native `.playback` session with `.mixWithOthers` enabled by default. Preserve explicit preferences and use the media stream output for WKWebView background playback.
+- **Android (Capacitor)** — Start a `mediaPlayback` foreground service with lock-screen transport and the sleep timer. Leave audio focus with the other media app so the sound bed can mix with it.
 
 ### `src/platform/fileExport.ts`
 Unified preset & custom Biome Pack JSON/audio import/export:
@@ -80,7 +80,7 @@ Unified preset & custom Biome Pack JSON/audio import/export:
 
 ### Phase 2: 5-Layer Hybrid Field-Recording Nature Engine & Surreal Granular DSP
 - [ ] Implement `BiomePackLoader.ts` with IndexedDB (`idb`) caching for `BiomePackManifest` + `.opus` decoding.
-- [ ] Implement `SeamlessLooper.ts` (dual-deck `AudioBufferSourceNode` with 4–6s equal-power cosine/sine crossfade and randomized interior start offsets) + 3-tier `rainIntensity` crossfader.
+- [ ] Implement `SeamlessLooper.ts` (native looping over beds with prepared equal-power seams and randomized starting offsets) and the 3-tier `rainIntensity` crossfader.
 - [ ] Implement `BioAcousticScheduler.ts` (Poisson lookahead scheduler, anti-repetition shuffle bag, `±6%` micro-pitch variance, distance-based air-absorption LPF, stereo panning, outdoor `ConvolverNode` reverb send, strict `onended` node cleanup).
 - [ ] Implement `public/worklets/granular-cloud.worklet.js` (16-grain Hann-windowed asynchronous sampler reading real field-recording buffers) and `public/worklets/shimmer-reverb.worklet.js`, wired to `surrealDepth`.
 - [ ] Add drag-and-drop custom audio file import so users can test/build custom Biome Packs directly in the browser.

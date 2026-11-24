@@ -21,7 +21,7 @@ All three engines share a single `AudioContext` (`latencyHint: 'playback'` for s
 │                                                      ├──► masterPreGain │
 │  [2. HYBRID NATURE BUS] ──► natureGain ──────────────┤    │             │
 │     • Tiered Field-Recording Beds (Prime Lengths)    │    ▼             │
-│     • Dual-Deck Equal-Power SeamlessLooper           │  masterLimiter   │
+│     • Native Equal-Power SeamlessLooper              │  masterLimiter   │
 │     • Granular Cloud Worklet (surrealDepth)          │  (DynamicsComp)  │
 │     • Stochastic 3D BioAcousticScheduler             │    │             │
 │     • Outdoor ConvolverNode + Shimmer Send           │    ▼             │
@@ -113,20 +113,15 @@ Each biome is defined by a `BiomePackManifest` (`public/biomes/<biomeId>/manifes
 - **2-Tier Wind Crossfade (`windGustiness` `0.0 -> 1.0`):** Crossfades `windTiers[0]` (gentle breeze) into `windTiers[1]` (gusting canopy wind) with a slow random-walk gain/filter modulation so gusts swell organically.
 - **Independent Continuous Stems:** `insectBed` (cicadas/crickets), `waterFlow` (creek/surf), and `ambientAir` (forest room tone).
 
-### Layer B: Prime-Length Polyrhythmic De-Correlation + Dual-Deck `SeamlessLooper.ts`
-- **Authoring Rule:** Trim continuous biome beds to distinct **prime-number durations** (e.g., `29s`, `37s`, `41s`, `53s`). Their combined phase alignment will not repeat for $29 \times 37 \times 41 \times 53 \approx 27 \text{ days}$.
-- **Dual-Deck Crossfade Algorithm (`SeamlessLooper.ts`):**
-  - NEVER use `AudioBufferSourceNode.loop = true`.
-  - Maintain `deckA` and `deckB` (`AudioBufferSourceNode` + `GainNode` each).
-  - Given buffer duration $D$ and crossfade duration $C = \min(5.0, D \times 0.25)$:
-    1. Start Deck A at a randomized interior offset $\in [0, D - C - 2]$.
-    2. Schedule Deck B to start at $t_{\text{swap}} = t_{\text{start}} + (D - \text{offset} - C)$ from a new randomized offset $\in [0, D \times 0.35]$.
-    3. Apply equal-power fade-out ($\cos$) on Deck A and fade-in ($\sin$) on Deck B across `[t_swap, t_swap + C]` using `setValueCurveAtTime` (64-point curve).
-    4. Disconnect Deck A inside `onended` and swap roles.
+### Layer B: Continuous recording beds (`SeamlessLooper.ts`)
+
+Each bed starts at a randomized interior offset and loops directly in Web Audio. At load time, blend the final $C = \min(5.0, D \times 0.25)$ seconds into the first $C$ seconds using equal-power fade-out and fade-in curves. Set the native loop start immediately after the head segment used in the blend. At the wrap, playback continues with the next sample of that head segment. Different effective loop lengths and independently randomized starting offsets keep the beds out of phase.
+
+The continuous beds can wrap while the WebView main thread is busy. Copy a shared buffer before preparing its seam when it also serves as a one-shot or impulse response. Stop and disconnect each source when changing scenes.
 
 ### Layer C: Stochastic 3D Bio-Acoustic Event Scheduler (`BioAcousticScheduler.ts`)
 Handles discrete field-recorded one-shots: `thunder[]`, `wildlife[]` (birds, frogs, nocturnal calls), and `accents[]` (heavy water drops, leaf rustles).
-- **Lookahead Loop:** Runs every `250ms` via `setInterval`, scheduling Web Audio nodes `500ms` ahead using `ctx.currentTime`.
+- **Lookahead Loop:** A render-thread clock wakes the scheduler about once per audio second. It queues Web Audio nodes up to eight seconds ahead using `ctx.currentTime`. Changes to event controls clear pending events so new settings can take effect.
 - **Poisson Arrival Rate:** For each category with user density slider $p \in [0, 1]$:
   - If $p < 0.02$, skip scheduling.
   - Mean interval $\mu(p) = \text{lerp}(\mu_{\max}, \mu_{\min}, p^2)$ (e.g., wildlife: `35s` at low density down to `2.5s` at max density; thunder: `90s` down to `12s`).
