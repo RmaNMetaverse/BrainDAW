@@ -13,14 +13,35 @@ const intervals: Record<Category, [number, number]> = { thunder: [90, 12], wildl
 export class BioAcousticScheduler {
   private readonly next: Partial<Record<Category, number>> = {};
   private readonly bags: Record<Category, ShuffleBag<AudioBuffer>>;
-  private readonly active = new Map<AudioBufferSourceNode, GainNode>();
+  private readonly active = new Map<AudioBufferSourceNode, { envelope: GainNode; at: number }>();
+  private params?: NatureParams;
 
   constructor(private readonly context: AudioContext, private readonly clips: DecodedBiome['oneshots'],
     private readonly dry: AudioNode, private readonly wet: AudioNode, private readonly shimmer: AudioNode) {
     this.bags = { thunder: new ShuffleBag(clips.thunder), wildlife: new ShuffleBag(clips.wildlife), accents: new ShuffleBag(clips.accents) };
   }
 
-  tick(params: NatureParams) {
+  update(params: NatureParams) {
+    const previous = this.params;
+    this.params = params;
+    if (!previous || previous.enabled !== params.enabled || previous.thunderProbability !== params.thunderProbability ||
+        previous.thunderDistance !== params.thunderDistance || previous.wildlifeDensity !== params.wildlifeDensity ||
+        previous.rainIntensity !== params.rainIntensity || previous.stereoWidth !== params.stereoWidth ||
+        previous.reverbSpace !== params.reverbSpace || previous.surrealDepth !== params.surrealDepth) {
+      const now = this.context.currentTime;
+      for (const [source, event] of this.active) {
+        if (event.at > now) {
+          source.stop(now);
+          this.active.delete(source);
+        }
+      }
+      for (const category of categories) delete this.next[category];
+    }
+  }
+
+  tick() {
+    const params = this.params;
+    if (!params?.enabled) return;
     const now = this.context.currentTime;
     const densities = { thunder: params.thunderProbability, wildlife: params.wildlifeDensity, accents: params.rainIntensity * 0.42 };
     for (const category of categories) {
@@ -32,7 +53,7 @@ export class BioAcousticScheduler {
       const interval = lerp(...intervals[category], density * density);
       let next = this.next[category] ?? now + poissonDelay(interval);
       if (next < now) next = now + poissonDelay(interval);
-      while (next < now + 0.5 && this.active.size < 36) {
+      while (next < now + 8 && this.active.size < 36) {
         const buffer = this.bags[category].next();
         if (buffer) this.schedule(buffer, next, category, density, params);
         next += Math.max(0.08, poissonDelay(interval));
@@ -43,9 +64,9 @@ export class BioAcousticScheduler {
 
   stop() {
     const now = this.context.currentTime;
-    for (const [source, envelope] of this.active) {
+    for (const [source, { envelope, at }] of this.active) {
       smoothParam(envelope.gain, 0, now, 0.16);
-      source.stop(now + 1);
+      source.stop(at > now ? now : now + 1);
     }
   }
 
@@ -72,7 +93,7 @@ export class BioAcousticScheduler {
     envelope.connect(direct).connect(this.dry);
     envelope.connect(space).connect(this.wet);
     envelope.connect(surreal).connect(this.shimmer);
-    this.active.set(source, envelope);
+    this.active.set(source, { envelope, at });
     source.onended = () => {
       for (const node of [source, air, pan, envelope, direct, space, surreal]) node.disconnect();
       this.active.delete(source);

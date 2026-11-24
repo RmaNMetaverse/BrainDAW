@@ -21,14 +21,15 @@ class NatureNoise extends AudioWorkletProcessor {
     const rain = params.rain[0], wind = params.wind[0], water = params.water[0];
     const wildlife = params.wildlife[0], thunder = params.thunder[0], distance = params.distance[0];
     const insects = params.insects[0], width = params.width[0], character = params.character[0];
+    if (rain + wind + water + wildlife + thunder + insects < 0.00001) return true;
     const callRate = wildlife < 0.02 ? 0 : (0.06 + wildlife * wildlife * 0.37) / sampleRate;
     const thunderRate = thunder < 0.02 ? 0 : (0.02 + thunder * thunder * 0.2) / sampleRate;
     for (let frame = 0; frame < left.length; frame++) {
       this.phase += 0.9 / sampleRate;
       if (this.phase >= 1) this.phase -= 1;
       const swell = 0.65 + 0.22 * Math.sin(2 * Math.PI * this.phase);
-      if (Math.random() < thunderRate && this.thunder < 0.05) this.thunder = 1;
-      if (Math.random() < callRate && this.call < 0.01) {
+      if (thunderRate && this.thunder < 0.05 && Math.random() < thunderRate) this.thunder = 1;
+      if (callRate && this.call < 0.01 && Math.random() < callRate) {
         this.call = 1;
         this.callFrequency = 850 + Math.random() * 1700;
       }

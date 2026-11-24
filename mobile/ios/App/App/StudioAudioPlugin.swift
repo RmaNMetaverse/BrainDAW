@@ -82,7 +82,7 @@ public final class StudioAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             self.deactivate?.cancel()
             do {
                 let audio = AVAudioSession.sharedInstance()
-                let options: AVAudioSession.CategoryOptions = call.getBool("mixWithOthers") == true ? [.mixWithOthers] : []
+                let options: AVAudioSession.CategoryOptions = call.getBool("mixWithOthers") == false ? [] : [.mixWithOthers]
                 try audio.setCategory(.playback, mode: .default, options: options)
                 try audio.setActive(true)
                 call.resolve()

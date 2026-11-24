@@ -1,5 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { splitFrequencies } from '../../src/audio/BrainwaveEngine';
+import { sealLoop } from '../../src/audio/SeamlessLooper';
 import { factoryPresets } from '../../src/store/factoryPresets';
 import { parsePreset } from '../../src/store/presets';
 import { initialVoicing, midiToHz, neighboringNotes } from '../../src/audio/utils/musicTheory';
@@ -16,6 +17,22 @@ test('every factory preset has a unique ID and survives preset JSON validation',
 test('binaural tones preserve the requested center and separation', () => {
   expect(splitFrequencies(144, 6)).toEqual([141, 147]);
   expect(splitFrequencies(110, 0.5)).toEqual([109.75, 110.25]);
+});
+
+test('the native field loop crossfades into the next head sample without a gap', () => {
+  const left = Float32Array.from({ length: 16 }, (_, index) => (index + 1) / 20);
+  const right = left.map((value) => -value);
+  const buffer = { length: 16, sampleRate: 8, numberOfChannels: 2,
+    getChannelData: (channel: number) => [left, right][channel] } as AudioBuffer;
+  expect(sealLoop(buffer)).toBe(0.5);
+  expect(left[12]).toBeCloseTo(13 / 20);
+  expect(left[14]).toBeCloseTo(15 / 20 * Math.cos(Math.PI / 3) + 3 / 20 * Math.sin(Math.PI / 3));
+  expect(left[15]).toBeCloseTo(4 / 20);
+  expect(right[15]).toBeCloseTo(-4 / 20);
+  expect(left[4] - left[15]).toBeCloseTo(left[5] - left[4]);
+  const sealed = left.slice();
+  expect(sealLoop(buffer)).toBe(0.5);
+  expect(left).toEqual(sealed);
 });
 
 test('gain smoothing holds the current value and crossfading preserves power', () => {

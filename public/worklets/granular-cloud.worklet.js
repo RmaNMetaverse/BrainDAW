@@ -36,9 +36,10 @@ class GranularCloud extends AudioWorkletProcessor {
     const first = this.buffer[0], second = this.buffer[1] ?? first;
     if (!first || !left || !right) return true;
     const depth = params.depth[0];
+    if (depth <= 0.001) return true;
     const size = first.length;
     for (let frame = 0; frame < left.length; frame++) {
-      if (--this.countdown <= 0 && depth > 0.001) {
+      if (--this.countdown <= 0) {
         this.spawn(depth, size);
         this.countdown = sampleRate * (0.72 + Math.random() * 0.56) / (2 + depth * 12);
       }

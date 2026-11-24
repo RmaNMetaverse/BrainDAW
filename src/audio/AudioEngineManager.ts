@@ -1,5 +1,6 @@
 import { useAudioStore } from '../store/useAudioStore';
-import { PlaybackOutput, prepareMobilePlayback } from '../platform/nativeAudio';
+import { PlaybackOutput, preferMixableBrowserAudio, prepareMobilePlayback } from '../platform/nativeAudio';
+import { detectPlatform } from '../platform/platformBridge';
 import { BrainwaveEngine } from './BrainwaveEngine';
 import { NatureEngine } from './NatureEngine';
 import { SynthPadEngine } from './SynthPadEngine';
@@ -41,7 +42,7 @@ class AudioEngineManager {
     this.context = context;
     try {
       await context.resume();
-      await Promise.all(['noise-generator', 'granular-cloud', 'shimmer-reverb'].map((name) => loadWorklet(context, name)));
+      await Promise.all(['noise-generator', 'granular-cloud', 'shimmer-reverb', 'playback-clock'].map((name) => loadWorklet(context, name)));
       this.master = gain(context, 0);
       this.sleepGain = gain(context, 1);
       this.meter = context.createAnalyser();
@@ -61,6 +62,16 @@ class AudioEngineManager {
       this.brainwave.output.connect(this.master);
       this.nature.output.connect(this.master);
       this.pad.output.connect(this.master);
+      const clock = new AudioWorkletNode(context, 'playback-clock', { numberOfInputs: 0 });
+      clock.port.onmessage = () => {
+        try {
+          this.schedule();
+          this.updateProgress();
+        } finally {
+          clock.port.postMessage(null);
+        }
+      };
+      clock.connect(this.master);
 
       const state = useAudioStore.getState();
       this.brainwave.update(state.brainwave);
@@ -77,6 +88,13 @@ class AudioEngineManager {
       useAudioStore.subscribe((state) => state.sleepTimerMin, () => this.resetSleep());
       useAudioStore.subscribe((state) => state.fadeOutSec, () => this.resetSleep());
       useAudioStore.subscribe((state) => state.activePresetId, () => this.resetSleep());
+      if (detectPlatform() === 'web') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden || !useAudioStore.getState().isPlaying || context.state === 'running') return;
+          preferMixableBrowserAudio();
+          void context.resume().catch(() => undefined);
+        });
+      }
       this.initialized = true;
     } catch (error) {
       await context.close();
@@ -100,14 +118,18 @@ class AudioEngineManager {
     if (this.sleepDeadline !== null) {
       const fadeStart = Math.max(now + 0.005, this.sleepDeadline - fadeOutSec);
       this.sleepGain.gain.setValueAtTime(1, fadeStart);
-      this.sleepGain.gain.linearRampToValueAtTime(0.0001, this.sleepDeadline);
+      this.sleepGain.gain.linearRampToValueAtTime(0, this.sleepDeadline);
     }
   }
 
-  private tick() {
-    if (!this.context) return;
+  private schedule() {
+    if (!useAudioStore.getState().isPlaying) return;
     this.pad?.tick();
     this.nature?.tick();
+  }
+
+  private updateProgress() {
+    if (!this.context || !useAudioStore.getState().isPlaying) return;
     const current = this.brainwave?.progress();
     const remaining = this.sleepDeadline === null ? null : Math.max(0, Math.ceil(this.sleepDeadline - this.context.currentTime));
     const state = useAudioStore.getState();
@@ -128,6 +150,7 @@ class AudioEngineManager {
     if (useAudioStore.getState().busy || useAudioStore.getState().isPlaying) return;
     useAudioStore.setState({ busy: true, error: null });
     try {
+      preferMixableBrowserAudio();
       const native = prepareMobilePlayback().catch(() => undefined);
       await this.init();
       await native;
@@ -140,8 +163,11 @@ class AudioEngineManager {
       }
       useAudioStore.setState({ isPlaying: true });
       this.updateMaster();
-      this.tick();
-      this.timer = setInterval(() => this.tick(), 250);
+      this.schedule();
+      this.updateProgress();
+      this.timer = setInterval(() => {
+        if (!document.hidden) this.updateProgress();
+      }, 250);
     } catch (error) {
       useAudioStore.setState({ error: error instanceof Error ? error.message : 'Audio could not start.' });
     } finally {

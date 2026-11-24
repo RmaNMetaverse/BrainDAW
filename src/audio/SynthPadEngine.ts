@@ -115,7 +115,7 @@ export class SynthPadEngine {
   tick() {
     const now = this.context.currentTime;
     const params = this.params;
-    if (!params?.enabled || now + 1 < this.nextEvolution) return;
+    if (!params?.enabled || now + 8 < this.nextEvolution) return;
     const start = Math.max(now, this.nextEvolution);
     this.nextEvolution = start + lerp(36, 10, params.evolutionSpeed);
     const choices = [1, 2, 3, 4].filter((voice) => voice !== this.lastVoice).map((voice) => ({

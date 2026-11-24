@@ -5,6 +5,15 @@ test('first click starts live audio across the three-channel console', async ({ 
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => { if (['error', 'warning'].includes(message.type())) errors.push(message.text()); });
   await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'audioSession', { value: { type: 'auto' }, configurable: true });
+    const sources: AudioBufferSourceNode[] = [];
+    const createSource = AudioContext.prototype.createBufferSource;
+    AudioContext.prototype.createBufferSource = function () {
+      const source = createSource.call(this);
+      sources.push(source);
+      return source;
+    };
+    Object.assign(window, { testSources: sources });
     const original = AudioContext.prototype.createAnalyser;
     AudioContext.prototype.createAnalyser = function () {
       const analyser = original.call(this);
@@ -24,6 +33,12 @@ test('first click starts live audio across the three-channel console', async ({ 
     return Math.max(...samples.map(Math.abs));
   })).toBeGreaterThan(0.008);
   await expect(page.getByText('Field recordings active')).toBeVisible();
+  const playback = await page.evaluate(() => ({
+    type: (navigator as Navigator & { audioSession: { type: string } }).audioSession.type,
+    loops: (window as Window & { testSources?: AudioBufferSourceNode[] }).testSources?.filter((source) => source.loop && source.loopStart > 0).length ?? 0,
+  }));
+  expect(playback.type).toBe('ambient');
+  expect(playback.loops).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as Window & { testAudioContext?: AudioContext }).testAudioContext?.state)).toBe('suspended');
   expect(errors).toEqual([]);

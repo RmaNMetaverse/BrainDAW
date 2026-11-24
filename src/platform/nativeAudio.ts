@@ -19,11 +19,18 @@ interface StudioAudioPlugin {
 export const studioAudio = registerPlugin<StudioAudioPlugin>('StudioAudio');
 const mixKey = 'braindaw.mix-with-others';
 
-export function getMixWithOthers() { return localStorage.getItem(mixKey) === 'true'; }
+export function getMixWithOthers() { return localStorage.getItem(mixKey) !== 'false'; }
 export function saveMixWithOthers(value: boolean) { localStorage.setItem(mixKey, String(value)); }
 
 export async function prepareMobilePlayback() {
   if (isMobile()) await studioAudio.prepare({ mixWithOthers: getMixWithOthers() });
+}
+
+export function preferMixableBrowserAudio() {
+  if (detectPlatform() !== 'web') return;
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (!session) return;
+  try { session.type = 'ambient'; } catch { /* The browser controls its available audio policies. */ }
 }
 
 export class PlaybackOutput {

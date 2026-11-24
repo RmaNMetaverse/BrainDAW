@@ -1,63 +1,49 @@
 import { gain } from './utils/audioGraph';
-import { equalPowerCrossfade } from './utils/smoothing';
 
-const fadeOut = new Float32Array(64);
-const fadeIn = new Float32Array(64);
-for (let index = 0; index < 64; index++) {
-  [fadeOut[index], fadeIn[index]] = equalPowerCrossfade(index / 63);
+const loopStarts = new WeakMap<AudioBuffer, number>();
+
+export function sealLoop(buffer: AudioBuffer) {
+  const existing = loopStarts.get(buffer);
+  if (existing !== undefined) return existing;
+  const frames = Math.min(Math.round(5 * buffer.sampleRate), Math.floor(buffer.length / 4));
+  if (frames < 2) return 0;
+  const curve = new Float32Array(frames);
+  for (let index = 0; index < frames; index++) curve[index] = Math.sin(index / (frames - 1) * Math.PI / 2);
+  const tail = buffer.length - frames;
+  for (let index = 0; index < buffer.numberOfChannels; index++) {
+    const samples = buffer.getChannelData(index);
+    for (let frame = 0; frame < frames; frame++) {
+      samples[tail + frame] = samples[tail + frame] * curve[frames - 1 - frame] + samples[frame] * curve[frame];
+    }
+  }
+  // The tail previews the head. Continue with the next head sample at the wrap.
+  const start = frames / buffer.sampleRate;
+  loopStarts.set(buffer, start);
+  return start;
 }
 
 export class SeamlessLooper {
   readonly output;
-  private readonly decks = new Map<AudioBufferSourceNode, GainNode>();
-  private nextStart = 0;
-  private stoppingAt: number | undefined;
-  private readonly crossfade: number;
-  private first = true;
+  private readonly source;
 
-  constructor(private readonly context: AudioContext, private readonly buffer: AudioBuffer, destination: AudioNode) {
-    this.crossfade = Math.min(5, buffer.duration * 0.25);
+  constructor(context: AudioContext, buffer: AudioBuffer, destination: AudioNode) {
+    const loopStart = sealLoop(buffer);
+    const source = this.source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.loopStart = loopStart;
+    source.loopEnd = buffer.duration;
+
     this.output = gain(context, 0);
-    this.output.connect(destination);
-    this.nextStart = context.currentTime + 0.05;
-  }
-
-  fill(lookahead = 78) {
-    if (this.stoppingAt !== undefined || this.buffer.duration < 2) return;
-    const now = this.context.currentTime;
-    if (this.nextStart < now) {
-      this.first = true;
-      this.nextStart = now + 0.03;
-    }
-    while (this.nextStart < now + lookahead) {
-      const start = this.nextStart;
-      const limit = this.first ? this.buffer.duration - this.crossfade * 2 - 0.3 : this.buffer.duration * 0.35;
-      const offset = Math.random() * Math.max(0, limit);
-      const end = start + this.buffer.duration - offset;
-      this.nextStart = end - this.crossfade;
-
-      const envelope = gain(this.context, 0);
-      const source = this.context.createBufferSource();
-      source.buffer = this.buffer;
-      source.connect(envelope).connect(this.output);
-      this.decks.set(source, envelope);
-      const fadeTime = this.first ? Math.min(0.4, this.crossfade) : this.crossfade;
-      envelope.gain.setValueCurveAtTime(fadeIn, start, fadeTime);
-      envelope.gain.setValueCurveAtTime(fadeOut, this.nextStart + 0.00001, this.crossfade - 0.00001);
-      source.onended = () => {
-        source.disconnect();
-        envelope.disconnect();
-        this.decks.delete(source);
-        if (this.stoppingAt !== undefined && this.decks.size === 0) this.output.disconnect();
-      };
-      source.start(start, offset);
-      this.first = false;
-    }
+    source.connect(this.output).connect(destination);
+    source.onended = () => {
+      source.disconnect();
+      this.output.disconnect();
+    };
+    source.start(context.currentTime + 0.03, loopStart + Math.random() * (buffer.duration - loopStart));
   }
 
   stop(at: number) {
-    this.stoppingAt = at;
-    for (const source of this.decks.keys()) source.stop(at);
-    if (!this.decks.size) this.output.disconnect();
+    this.source.stop(at);
   }
 }

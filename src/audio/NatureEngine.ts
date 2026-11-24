@@ -88,10 +88,21 @@ export class NatureEngine {
     windOsc.connect(windMod).connect(wind.gain);
     wind.connect(lowpass(context, 2300)).connect(field);
     const loops: Scene['loops'] = [];
+    const shared = new Set([samples.impulse, ...Object.values(samples.oneshots).flat()]);
+    const copies = new Map<AudioBuffer, AudioBuffer>();
     const add = (key: string, buffer: AudioBuffer | undefined, trim: number, destination = field) => {
       if (!buffer || buffer.duration < 2) return;
+      if (shared.has(buffer)) {
+        const original = buffer;
+        buffer = copies.get(original) ?? context.createBuffer(original.numberOfChannels, original.length, original.sampleRate);
+        if (!copies.has(original)) {
+          for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+            buffer.getChannelData(channel).set(original.getChannelData(channel));
+          }
+          copies.set(original, buffer);
+        }
+      }
       const looper = new SeamlessLooper(context, buffer, destination);
-      looper.fill();
       loops.push({ looper, key, trim });
     };
     samples.beds.rainTiers.forEach((buffer, index) => add('rain' + index, buffer, 0.63 + index * 0.075));
@@ -186,6 +197,7 @@ export class NatureEngine {
     for (const [key, value] of Object.entries(noise)) change(this.fallback.parameters.get(key), value);
     change(this.fallbackSpace.gain, params.reverbSpace * 0.06 + params.surrealDepth * 0.27);
     if (!scene) return;
+    scene.events.update(params);
     const ordinary = 1 - params.surrealDepth * 0.41;
     for (const { looper, key, trim } of scene.loops) change(looper.output.gain, levels[key] * trim * ordinary);
     change(scene.windMod.gain, params.windGustiness * 0.2);
@@ -196,8 +208,6 @@ export class NatureEngine {
   }
 
   tick() {
-    if (!this.scene || !this.params) return;
-    for (const { looper } of this.scene.loops) looper.fill();
-    if (this.params.enabled) this.scene.events.tick(this.params);
+    this.scene?.events.tick();
   }
 }
