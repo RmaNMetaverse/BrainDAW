@@ -12,5 +12,7 @@ javac --release 11 -classpath "$platform" -d "$out/classes" "$fixtures/PlaybackA
 "$tools/aapt" package -f -M "$fixtures/AndroidManifest.xml" -I "$platform" -F "$out/unsigned.apk"
 (cd "$out" && "$tools/aapt" add unsigned.apk classes.dex)
 "$tools/zipalign" -f 4 "$out/unsigned.apk" "$out/aligned.apk"
-"$tools/apksigner" sign --ks "$HOME/.android/debug.keystore" --ks-key-alias androiddebugkey \
-  --ks-pass pass:android --out "$RUNNER_TEMP/competing-audio.apk" "$out/aligned.apk"
+keytool -genkeypair -keystore "$out/fixture.p12" -storetype PKCS12 -storepass fixture \
+  -alias audio-fixture -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=Android audio fixture'
+"$tools/apksigner" sign --ks "$out/fixture.p12" --ks-type PKCS12 --ks-key-alias audio-fixture \
+  --ks-pass pass:fixture --out "$RUNNER_TEMP/competing-audio.apk" "$out/aligned.apk"
