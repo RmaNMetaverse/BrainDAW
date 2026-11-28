@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { BrainwaveParams, BrainwavePresetId, NatureParams, NeuroScapePreset, SessionStage, SynthPadParams } from '../types/audio';
+import type { BrainwaveParams, BrainwavePresetId, NatureParams, NatureSoundParams, NeuroScapePreset, SessionStage, SynthPadParams } from '../types/audio';
+import { readNatureBlend, type NatureCornerIndex } from '../audio/natureBlend';
 import { brainwaveBands, factoryPresets } from './factoryPresets';
 
 export type Channel = 'brainwave' | 'nature' | 'synthPad';
@@ -26,6 +27,8 @@ type StudioState = Pick<NeuroScapePreset, 'masterVolume' | 'sleepTimerMin' | 'fa
   setBrainwaveParam: <K extends keyof BrainwaveParams>(key: K, value: BrainwaveParams[K]) => void;
   applyBrainwavePreset: (preset: Exclude<BrainwavePresetId, 'custom'>) => void;
   setNatureParam: <K extends keyof NatureParams>(key: K, value: NatureParams[K]) => void;
+  setNatureBlendPosition: (x: number, y: number) => void;
+  setNatureCorner: (index: NatureCornerIndex, settings: Partial<NatureSoundParams>) => void;
   setBiome: (biome: string) => void;
   setSynthPadParam: <K extends keyof SynthPadParams>(key: K, value: SynthPadParams[K]) => void;
   loadPreset: (preset: NeuroScapePreset) => void;
@@ -56,6 +59,14 @@ export const useAudioStore = create<StudioState>()(subscribeWithSelector((set) =
     return { brainwave: { ...state.brainwave, preset, beatHz, carrierHz } };
   }),
   setNatureParam: (key, value) => set((state) => ({ nature: { ...state.nature, [key]: value } })),
+  setNatureBlendPosition: (x, y) => set((state) => ({ nature: { ...state.nature,
+    blend: { ...readNatureBlend(state.nature), x, y } } })),
+  setNatureCorner: (index, settings) => set((state) => {
+    const blend = readNatureBlend(state.nature);
+    const corners: typeof blend.corners = [...blend.corners];
+    corners[index] = { ...corners[index], ...settings };
+    return { nature: { ...state.nature, blend: { ...blend, corners } } };
+  }),
   setBiome: (biome) => set((state) => ({ nature: { ...state.nature, biome } })),
   setSynthPadParam: (key, value) => set((state) => ({ synthPad: { ...state.synthPad, [key]: value } })),
   loadPreset: (preset) => set(presetState(preset)),

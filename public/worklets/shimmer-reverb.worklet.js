@@ -1,3 +1,5 @@
+const pitchWindow = Float32Array.from({ length: 1024 }, (_, i) => 0.5 - 0.5 * Math.cos(i / 1024 * 2 * Math.PI));
+
 class ShimmerReverb extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
@@ -14,14 +16,17 @@ class ShimmerReverb extends AudioWorkletProcessor {
     this.pitch = new Float32Array(Math.round(0.16 * sampleRate));
     this.head = 0;
     this.phase = 0;
+    this.tail = 0;
     this.filter = 1 - Math.exp(-2 * Math.PI * 4500 / sampleRate);
   }
 
   tap(delay) {
-    const position = (this.head - delay + this.pitch.length) % this.pitch.length;
+    const offset = this.head - delay;
+    const position = offset < 0 ? offset + this.pitch.length : offset;
     const index = Math.floor(position);
     const fraction = position - index;
-    return this.pitch[index] + (this.pitch[(index + 1) % this.pitch.length] - this.pitch[index]) * fraction;
+    const next = index + 1 === this.pitch.length ? 0 : index + 1;
+    return this.pitch[index] + (this.pitch[next] - this.pitch[index]) * fraction;
   }
 
   process(inputs, outputs, params) {
@@ -29,7 +34,14 @@ class ShimmerReverb extends AudioWorkletProcessor {
     const out = outputs[0];
     if (!out[0] || !out[1]) return true;
     const decay = params.decay[0], shimmer = params.shimmer[0];
+    const leftInput = input[0], rightInput = input[1] ?? leftInput;
+    if (leftInput?.some((value) => Math.abs(value) > 0.000001) ||
+        rightInput?.some((value) => Math.abs(value) > 0.000001)) {
+      this.tail = Math.ceil(decay * 1.75 * sampleRate);
+    } else if (this.tail <= 0) return true;
+    else this.tail -= out[0].length;
     const width = this.pitch.length * 0.58;
+    const phaseStep = 1 / width;
     const feedback = Math.pow(0.001, 0.085 / decay) * (1 - shimmer * 0.2);
     for (let frame = 0; frame < out[0].length; frame++) {
       let sum = 0;
@@ -38,21 +50,28 @@ class ShimmerReverb extends AudioWorkletProcessor {
         sum += this.damped[index];
       }
       this.pitch[this.head] = sum * 0.25;
-      const overlap = (this.phase + 0.5) % 1;
-      const window = 0.5 - 0.5 * Math.cos(this.phase * 2 * Math.PI);
-      const pitched = (this.tap(3 + (1 - this.phase) * width) * window + this.tap(3 + (1 - overlap) * width) * (1 - window)) * shimmer * 0.35;
-      const left = input[0]?.[frame] ?? 0;
-      const right = input[1]?.[frame] ?? left;
+      let pitched = 0;
+      if (shimmer > 0.0001) {
+        const overlap = this.phase < 0.5 ? this.phase + 0.5 : this.phase - 0.5;
+        const position = this.phase * pitchWindow.length;
+        const index = Math.floor(position);
+        const next = index + 1 === pitchWindow.length ? 0 : index + 1;
+        const window = pitchWindow[index] + (pitchWindow[next] - pitchWindow[index]) * (position - index);
+        pitched = (this.tap(3 + (1 - this.phase) * width) * window + this.tap(3 + (1 - overlap) * width) * (1 - window)) * shimmer * 0.35;
+      }
+      const left = leftInput?.[frame] ?? 0;
+      const right = rightInput?.[frame] ?? left;
       for (let index = 0; index < 4; index++) {
         const excitation = index % 2 ? right : left;
         const reflected = this.damped[index] - sum * 0.5;
         this.lines[index][this.offsets[index]] = excitation * 0.32 + reflected * feedback + pitched * (index === 2 ? -1 : 1);
-        this.offsets[index] = (this.offsets[index] + 1) % this.lines[index].length;
+        if (++this.offsets[index] === this.lines[index].length) this.offsets[index] = 0;
       }
       out[0][frame] = (this.damped[0] - this.damped[1] + this.damped[2] * 0.6) * 0.55;
       out[1][frame] = (this.damped[2] - this.damped[3] + this.damped[0] * 0.6) * 0.55;
-      this.head = (this.head + 1) % this.pitch.length;
-      this.phase = (this.phase + 1 / width) % 1;
+      if (++this.head === this.pitch.length) this.head = 0;
+      this.phase += phaseStep;
+      if (this.phase >= 1) this.phase -= 1;
     }
     return true;
   }

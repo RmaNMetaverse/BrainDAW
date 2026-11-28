@@ -1,4 +1,5 @@
 import type { BrainwaveParams, BrainwavePresetId, NatureParams, NeuroScapePreset, PresetCategory, SessionStage, SynthPadParams } from '../types/audio';
+import { createNatureBlend, natureSoundForBiome } from '../audio/natureBlend';
 
 export const presetCategories: Record<PresetCategory, string> = {
   meditation: 'Meditation',
@@ -6,6 +7,8 @@ export const presetCategories: Record<PresetCategory, string> = {
   sleep: 'Sleep',
   lucid: 'Dreamwork & imagery',
   psychedelic: 'Psychedelic & cannabis-inspired',
+  pure: 'Pure brainwaves',
+  soundscape: 'Restful soundscapes',
   custom: 'My presets',
 };
 
@@ -20,7 +23,7 @@ export const brainwaveBands: Record<Exclude<BrainwavePresetId, 'custom'>, { beat
 
 export const biomeNames: Record<string, string> = {
   jungle: 'Rainforest', rainstorm: 'Rainstorm', night_forest: 'Night Forest',
-  ocean_coast: 'Ocean Coast', alpine_wind: 'Alpine Wind',
+  ocean_coast: 'Ocean Coast', alpine_wind: 'Alpine Wind', fireside: 'Fireside',
 };
 
 const brainwave: BrainwaveParams = {
@@ -55,6 +58,16 @@ function preset(id: string, name: string, category: PresetCategory, options: {
     brainwave: { ...brainwave, ...options.brainwave }, nature: { ...nature, ...options.nature },
     synthPad: { ...synthPad, ...options.synthPad }, timeline: options.timeline,
   };
+}
+
+function pureTone(band: Exclude<BrainwavePresetId, 'custom'>, name: string, description: string, minutes?: number) {
+  const { carrierHz, beatHz } = brainwaveBands[band];
+  return preset(`pure-${band}`, name, 'pure', {
+    description, sleepTimerMin: minutes,
+    brainwave: { preset: band, carrierHz, beatHz, mode: 'binaural', volume: 0.29, isochronicDepth: 0,
+      rhythmModHz: 0, rhythmModDepth: 0, frequencyDriftDepth: 0 },
+    nature: { enabled: false }, synthPad: { enabled: false },
+  });
 }
 
 export const factoryPresets = [
@@ -262,6 +275,58 @@ export const factoryPresets = [
     brainwave: { preset: 'alpha', mode: 'isochronic', beatHz: 8.9, carrierHz: 163, volume: 0.17, isochronicDepth: 0.19, rhythmModHz: 0.061, rhythmModDepth: 0.18 },
     nature: { biome: 'alpine_wind', rainIntensity: 0, windGustiness: 0.52, thunderProbability: 0, wildlifeDensity: 0.06, waterFlow: 0, reverbSpace: 0.33, surrealDepth: 0.4 },
     synthPad: { waveform: 'triangle', scale: 'minor_pentatonic', rootNote: 50, detuneCents: 7, filterCutoffHz: 1320, filterLfoRateHz: 0.037, evolutionSpeed: 0.44, shimmerAmount: 0.37, reverbDecaySec: 8.5 },
+  }),
+  pureTone('delta', 'Pure Delta · Night Tone', 'A 2 Hz binaural difference with a low carrier for a quiet bedtime listening session.', 45),
+  pureTone('theta', 'Pure Theta · Stillness', 'A steady 6 Hz difference for a sparse meditation setting.'),
+  pureTone('alpha', 'Pure Alpha · Quiet Focus', 'A steady 10 Hz difference for relaxed, attentive listening.'),
+  pureTone('smr', 'Pure SMR · Steady Attention', 'A 14 Hz difference at a 200 Hz center pitch.'),
+  pureTone('beta', 'Pure Beta · Study Tone', 'A steady 20 Hz difference for listeners who prefer a faster beat.'),
+  pureTone('gamma', 'Pure Gamma · Bright Pulse', 'A 40 Hz difference with a brighter center pitch and no modulation.'),
+  preset('pure-alpha-speaker', 'Pure Alpha · Speaker Pulse', 'pure', {
+    description: 'A clean 10 Hz isochronic pulse for speaker playback, with no background layers.',
+    brainwave: { carrierHz: brainwaveBands.alpha.carrierHz, beatHz: brainwaveBands.alpha.beatHz,
+      preset: 'alpha', mode: 'isochronic', volume: 0.27, isochronicDepth: 0.66,
+      rhythmModHz: 0, rhythmModDepth: 0, frequencyDriftDepth: 0 }, nature: { enabled: false }, synthPad: { enabled: false },
+  }),
+  preset('hearth-after-dark', 'Hearth After Dark', 'soundscape', {
+    description: 'Warm embers and soft wood crackle for late evenings.',
+    brainwave: { enabled: false }, nature: { ...natureSoundForBiome('fireside'), volume: 0.74 },
+    synthPad: { enabled: false }, sleepTimerMin: 45,
+  }),
+  preset('window-rain', 'Rain Against the Window', 'soundscape', {
+    description: 'Steady rain with no thunder for reading, study, or a slow evening.',
+    brainwave: { enabled: false }, nature: { ...natureSoundForBiome('rainstorm'), rainIntensity: 0.53, thunderProbability: 0, stereoWidth: 0.56 },
+    synthPad: { enabled: false },
+  }),
+  preset('open-shore', 'Open Shore', 'soundscape', {
+    description: 'Wide coastal surf and a little wind, with no tones underneath.',
+    brainwave: { enabled: false }, nature: { ...natureSoundForBiome('ocean_coast'), waterFlow: 0.86, windGustiness: 0.14 },
+    synthPad: { enabled: false },
+  }),
+  preset('first-light-forest', 'First Light in the Forest', 'soundscape', {
+    description: 'Bird calls, soft insect layers, and a nearby stream for an unhurried morning.',
+    brainwave: { enabled: false }, nature: { ...natureSoundForBiome('jungle'), wildlifeDensity: 0.62, waterFlow: 0.25 },
+    synthPad: { enabled: false },
+  }),
+  preset('rain-at-the-hearth', 'Rain at the Hearth', 'soundscape', {
+    description: 'An even blend of fireside crackle and sheltering rain, with a low warm pad.',
+    brainwave: { enabled: false }, nature: { blend: createNatureBlend(0.5, 1), volume: 0.74 },
+    synthPad: { volume: 0.17, rootNote: 45, waveform: 'sine', scale: 'sus2_drone', filterCutoffHz: 540, shimmerAmount: 0.07 },
+    sleepTimerMin: 60,
+  }),
+  preset('coastal-stillness', 'Coastal Stillness', 'soundscape', {
+    description: 'Ocean waves and light rainforest ambience underneath a slow, airy chord.',
+    brainwave: { enabled: false }, nature: { blend: createNatureBlend(0.31, 0), volume: 0.72 },
+    synthPad: { volume: 0.22, rootNote: 48, waveform: 'triangle', scale: 'dorian', filterCutoffHz: 725, evolutionSpeed: 0.12, shimmerAmount: 0.12 },
+  }),
+  preset('four-seasons-still', 'Four Corners at Dusk', 'soundscape', {
+    description: 'Fireside, rain, sea, and forest at equal shares. Move the Nature pad to follow any sound.',
+    brainwave: { enabled: false }, nature: { blend: createNatureBlend(), volume: 0.8 }, synthPad: { enabled: false },
+  }),
+  preset('mountain-air', 'High Valley Air', 'soundscape', {
+    description: 'Open, gentle wind and a distant stream for a quiet work session.',
+    brainwave: { enabled: false }, nature: { ...natureSoundForBiome('alpine_wind'), windGustiness: 0.42, reverbSpace: 0.28 },
+    synthPad: { enabled: false },
   }),
 ];
 

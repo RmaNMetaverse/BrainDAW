@@ -9,6 +9,8 @@
 
 All three engines share a single `AudioContext` (`latencyHint: 'playback'` for stability and low CPU during multi-hour sessions).
 
+The Android wrapper requests 180 ms of buffering to give the audio renderer headroom during system UI activity. The visualizer stops drawing when a system overlay takes window focus and resumes when focus returns. The device and WebView determine the actual buffer size.
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        MASTER AUDIO GRAPH                               │
@@ -118,6 +120,8 @@ Each biome is defined by a `BiomePackManifest` (`public/biomes/<biomeId>/manifes
 Each bed starts at a randomized interior offset and loops directly in Web Audio. At load time, blend the final $C = \min(5.0, D \times 0.25)$ seconds into the first $C$ seconds using equal-power fade-out and fade-in curves. Set the native loop start immediately after the head segment used in the blend. At the wrap, playback continues with the next sample of that head segment. Different effective loop lengths and independently randomized starting offsets keep the beds out of phase.
 
 The continuous beds can wrap while the WebView main thread is busy. Copy a shared buffer before preparing its seam when it also serves as a one-shot or impulse response. Stop and disconnect each source when changing scenes.
+
+Nature can run up to four stereo voices through independent gain nodes. The XY shares are `(1−x)y`, `xy`, `(1−x)(1−y)`, and `x(1−y)`, ordered top-left, top-right, bottom-left, bottom-right. Each voice has its own source settings. The fireside voice generates its ember bed and wood crackle in the noise worklet, with adjustable warmth and crackle density.
 
 ### Layer C: Stochastic 3D Bio-Acoustic Event Scheduler (`BioAcousticScheduler.ts`)
 Handles discrete field-recorded one-shots: `thunder[]`, `wildlife[]` (birds, frogs, nocturnal calls), and `accents[]` (heavy water drops, leaf rustles).

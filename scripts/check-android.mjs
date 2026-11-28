@@ -31,6 +31,8 @@ try {
   const page = await webview.page();
   console.log('WebView opened at ' + page.url());
   await page.addInitScript(() => {
+    window.testWindowBlurs = 0;
+    window.addEventListener('braindawwindowblur', () => { window.testWindowBlurs++; });
     const createAnalyser = AudioContext.prototype.createAnalyser;
     AudioContext.prototype.createAnalyser = function () {
       const analyser = createAnalyser.call(this);
@@ -46,11 +48,33 @@ try {
     if (!window.testAnalyser) return null;
     const values = new Float32Array(window.testAnalyser.fftSize);
     window.testAnalyser.getFloatTimeDomainData(values);
-    return { time: window.testContext.currentTime, state: window.testContext.state, peak: Math.max(...values.map(Math.abs)) };
+    return { time: window.testContext.currentTime, state: window.testContext.state, baseLatency: window.testContext.baseLatency,
+      underrunSeconds: window.testContext.playbackStats?.underrunDuration, blurs: window.testWindowBlurs,
+      peak: Math.max(...values.map(Math.abs)) };
   });
   await waitFor(readAudio, (audio) => audio?.state === 'running' && audio.peak > 0.005, 'Android Web Audio was silent.');
   await waitFor(() => adb('shell', 'dumpsys', 'activity', 'services', app),
     (services) => services?.includes('StudioPlaybackService') && services.includes('isForeground=true'), 'Media playback was not foregrounded.');
+  await page.getByRole('combobox', { name: 'Session preset' }).selectOption('four-seasons-still');
+  await page.getByRole('button', { name: 'Nature', exact: true }).click();
+  await page.getByText('Four-corner mix active', { exact: true }).waitFor();
+  await waitFor(readAudio, (audio) => audio?.peak > 0.002, 'The four-corner Nature mix was silent.');
+  const beforeShade = await readAudio();
+  for (let pass = 0; pass < 2; pass++) {
+    adb('shell', 'cmd', 'statusbar', 'expand-notifications');
+    await waitFor(readAudio, (audio) => audio?.blurs > beforeShade.blurs + pass && audio.state === 'running' && audio.peak > 0.002,
+      'The app did not lose window focus and keep audio playing under the notification shade.');
+    const opened = await readAudio();
+    await waitFor(readAudio, (audio) => audio?.time > opened.time + 0.8 && audio.state === 'running' && audio.peak > 0.002,
+      'Audio stopped while the notification shade was open.');
+    adb('shell', 'cmd', 'statusbar', 'collapse');
+    await delay(450);
+  }
+  const afterShade = await readAudio();
+  console.log(`Notification shade playback passed. Audio buffer: ${Math.round(afterShade.baseLatency * 1000)} ms.`);
+  if (afterShade.underrunSeconds !== undefined && beforeShade.underrunSeconds !== undefined) {
+    console.log(`WebView-reported underrun time during shade checks: ${Math.round((afterShade.underrunSeconds - beforeShade.underrunSeconds) * 1000)} ms.`);
+  }
   if (competingApk) {
     adb('shell', 'am', 'start', '-W', '-n', competingApp + '/.PlaybackActivity');
     await waitFor(() => adb('logcat', '-d', '-s', 'BrainDAWFixture:I'),
@@ -78,6 +102,7 @@ try {
   console.error(adb('logcat', '-d', '-t', '1000', '-s', 'AndroidRuntime', 'Capacitor', 'Capacitor/Console', 'chromium'));
   throw error;
 } finally {
+  adb('shell', 'cmd', 'statusbar', 'collapse');
   if (competingApk) adb('shell', 'am', 'force-stop', competingApp);
   adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP');
   await device.close();

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { audioEngine } from '../../audio/AudioEngineManager';
+import { detectPlatform } from '../../platform/platformBridge';
 import { useAudioStore } from '../../store/useAudioStore';
 
 export function VisualizerCanvas() {
@@ -9,14 +10,23 @@ export function VisualizerCanvas() {
     const ctx = element?.getContext('2d');
     if (!element || !ctx) return;
     const colors = [[56, 189, 248], [52, 211, 153], [167, 139, 250]];
+    const android = detectPlatform() === 'capacitor-android';
+    let windowFocused = !android || document.hasFocus();
+    let lastDraw = -Infinity;
     let frame = 0;
     let width = 1, height = 1;
     let samples: Float32Array<ArrayBuffer> | undefined;
 
-    const paint = () => {
+    const paint = (now: number) => {
       frame = 0;
+      if (document.hidden || !windowFocused) return;
       const state = useAudioStore.getState();
-      const playing = state.isPlaying && !document.hidden;
+      const playing = state.isPlaying;
+      if (android && playing && now - lastDraw < 1000 / 24) {
+        frame = requestAnimationFrame(paint);
+        return;
+      }
+      lastDraw = now;
       const analyser = audioEngine.analyser;
       ctx.clearRect(0, 0, width, height);
       ctx.strokeStyle = 'rgba(174,199,235,.12)';
@@ -43,7 +53,7 @@ export function VisualizerCanvas() {
       ctx.lineWidth = 1.45;
       ctx.strokeStyle = tint;
       ctx.shadowColor = tint;
-      ctx.shadowBlur = 4 + pulse * 4;
+      ctx.shadowBlur = android ? 0 : 4 + pulse * 4;
       ctx.stroke();
       ctx.shadowBlur = 0;
       frame = requestAnimationFrame(paint);
@@ -51,11 +61,13 @@ export function VisualizerCanvas() {
 
     const update = () => {
       cancelAnimationFrame(frame);
-      paint();
+      paint(performance.now());
     };
+    const blur = () => { windowFocused = false; cancelAnimationFrame(frame); };
+    const focus = () => { windowFocused = true; update(); };
     const resize = new ResizeObserver(() => {
       const { width: cssWidth, height: cssHeight } = element.getBoundingClientRect();
-      const ratio = Math.min(window.devicePixelRatio, 2);
+      const ratio = Math.min(window.devicePixelRatio, android ? 1 : 2);
       width = Math.max(cssWidth, 1);
       height = Math.max(cssHeight, 1);
       element.width = Math.round(width * ratio);
@@ -66,11 +78,17 @@ export function VisualizerCanvas() {
     resize.observe(element);
     const unsubscribe = useAudioStore.subscribe((state) => state.isPlaying, update);
     document.addEventListener('visibilitychange', update);
+    if (android) {
+      window.addEventListener('braindawwindowblur', blur);
+      window.addEventListener('braindawwindowfocus', focus);
+    }
     return () => {
       unsubscribe();
       resize.disconnect();
       cancelAnimationFrame(frame);
       document.removeEventListener('visibilitychange', update);
+      window.removeEventListener('braindawwindowblur', blur);
+      window.removeEventListener('braindawwindowfocus', focus);
     };
   }, []);
   return <canvas ref={canvas} className="visualizer" aria-hidden />;

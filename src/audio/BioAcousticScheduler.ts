@@ -1,4 +1,4 @@
-import type { NatureParams } from '../types/audio';
+import type { NatureSoundParams } from '../types/audio';
 import type { DecodedBiome } from './BiomePackLoader';
 import { gain, lowpass } from './utils/audioGraph';
 import { ShuffleBag } from './utils/shuffleBag';
@@ -14,17 +14,20 @@ export class BioAcousticScheduler {
   private readonly next: Partial<Record<Category, number>> = {};
   private readonly bags: Record<Category, ShuffleBag<AudioBuffer>>;
   private readonly active = new Map<AudioBufferSourceNode, { envelope: GainNode; at: number }>();
-  private params?: NatureParams;
+  private params?: NatureSoundParams;
+  private activeSound = false;
 
   constructor(private readonly context: AudioContext, private readonly clips: DecodedBiome['oneshots'],
     private readonly dry: AudioNode, private readonly wet: AudioNode, private readonly shimmer: AudioNode) {
     this.bags = { thunder: new ShuffleBag(clips.thunder), wildlife: new ShuffleBag(clips.wildlife), accents: new ShuffleBag(clips.accents) };
   }
 
-  update(params: NatureParams) {
+  update(params: NatureSoundParams, active: boolean) {
     const previous = this.params;
     this.params = params;
-    if (!previous || previous.enabled !== params.enabled || previous.thunderProbability !== params.thunderProbability ||
+    const changed = active !== this.activeSound;
+    this.activeSound = active;
+    if (!previous || changed || previous.thunderProbability !== params.thunderProbability ||
         previous.thunderDistance !== params.thunderDistance || previous.wildlifeDensity !== params.wildlifeDensity ||
         previous.rainIntensity !== params.rainIntensity || previous.stereoWidth !== params.stereoWidth ||
         previous.reverbSpace !== params.reverbSpace || previous.surrealDepth !== params.surrealDepth) {
@@ -41,7 +44,7 @@ export class BioAcousticScheduler {
 
   tick() {
     const params = this.params;
-    if (!params?.enabled) return;
+    if (!params || !this.activeSound) return;
     const now = this.context.currentTime;
     const densities = { thunder: params.thunderProbability, wildlife: params.wildlifeDensity, accents: params.rainIntensity * 0.42 };
     for (const category of categories) {
@@ -70,7 +73,7 @@ export class BioAcousticScheduler {
     }
   }
 
-  private schedule(buffer: AudioBuffer, at: number, category: Category, density: number, params: NatureParams) {
+  private schedule(buffer: AudioBuffer, at: number, category: Category, density: number, params: NatureSoundParams) {
     const source = this.context.createBufferSource();
     source.buffer = buffer;
     const playbackRate = 1 + (Math.random() * 2 - 1) * 0.06;

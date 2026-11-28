@@ -1,13 +1,15 @@
 class NatureNoise extends AudioWorkletProcessor {
   static get parameterDescriptors() {
-    return ['rain', 'wind', 'thunder', 'distance', 'water', 'insects', 'wildlife', 'width', 'character'].map((name) => ({
+    return ['rain', 'wind', 'thunder', 'distance', 'water', 'insects', 'wildlife', 'width', 'character', 'fire', 'fireCrackle', 'fireWarmth'].map((name) => ({
       name, defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate',
     }));
   }
 
   constructor() {
     super();
-    this.filters = [new Float64Array(11), new Float64Array(11)];
+    this.filters = [new Float64Array(13), new Float64Array(13)];
+    this.spark = [0, 0];
+    this.sparkGain = [0, 0];
     this.thunder = 0;
     this.call = 0;
     this.phase = 0;
@@ -21,9 +23,13 @@ class NatureNoise extends AudioWorkletProcessor {
     const rain = params.rain[0], wind = params.wind[0], water = params.water[0];
     const wildlife = params.wildlife[0], thunder = params.thunder[0], distance = params.distance[0];
     const insects = params.insects[0], width = params.width[0], character = params.character[0];
-    if (rain + wind + water + wildlife + thunder + insects < 0.00001) return true;
+    const fire = params.fire[0], crackle = params.fireCrackle[0], warmth = params.fireWarmth[0];
+    if (rain + wind + water + wildlife + thunder + insects + fire < 0.00001) return true;
     const callRate = wildlife < 0.02 ? 0 : (0.06 + wildlife * wildlife * 0.37) / sampleRate;
     const thunderRate = thunder < 0.02 ? 0 : (0.02 + thunder * thunder * 0.2) / sampleRate;
+    const sparkRate = (crackle * 13) / sampleRate;
+    const sparkDecay = Math.exp(-1 / (sampleRate * (0.006 + warmth * 0.017)));
+    const sparkAttack = 1 - Math.exp(-1 / (sampleRate * 0.0016));
     for (let frame = 0; frame < left.length; frame++) {
       this.phase += 0.9 / sampleRate;
       if (this.phase >= 1) this.phase -= 1;
@@ -54,10 +60,18 @@ class NatureNoise extends AudioWorkletProcessor {
         f[8] += (pink - f[8]) * (0.09 + character * 0.07);
         f[9] += (f[7] - f[9]) * (0.018 - distance * 0.012);
         f[10] += (pink - f[10]) * 0.035;
-        const sample = (pink - f[8]) * rain * 0.54 + f[10] * rain * 0.16
+        let sample = (pink - f[8]) * rain * 0.54 + f[10] * rain * 0.16
           + (f[8] - f[10]) * wind * swell * 0.85 + f[10] * water * (1 - swell * 0.6) * 0.7
           + f[9] * this.thunder * (1 - distance * 0.6) * thunder * 0.7
           + (white - f[8]) * insects * cricket * 0.009 + call * (channel ? 0.55 : 1);
+        if (fire > 0.0001) {
+          f[11] += (pink - f[11]) * (0.026 - warmth * 0.016);
+          f[12] += (white - f[12]) * (0.39 - warmth * 0.26);
+          if (sparkRate && Math.random() < sparkRate) this.spark[channel] = 0.08 + Math.random() * 0.29;
+          this.spark[channel] *= sparkDecay;
+          this.sparkGain[channel] += (this.spark[channel] - this.sparkGain[channel]) * sparkAttack;
+          sample += fire * 0.58 * (f[11] * (0.54 + 0.23 * swell) + (f[12] - f[11]) * this.sparkGain[channel]);
+        }
         if (channel === 0) first = sample;
         else {
           const middle = (sample + first) * 0.5;

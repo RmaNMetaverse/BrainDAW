@@ -38,7 +38,8 @@ class AudioEngineManager {
 
   private async init() {
     if (this.initialized) return;
-    const context = new AudioContext({ latencyHint: 'playback' });
+    // Ambient playback can trade control latency for more headroom under Android UI load.
+    const context = new AudioContext({ latencyHint: detectPlatform() === 'capacitor-android' ? 0.18 : 'playback' });
     this.context = context;
     try {
       await context.resume();
@@ -56,8 +57,12 @@ class AudioEngineManager {
       this.master.connect(limiter).connect(this.sleepGain).connect(this.meter);
       this.playbackOutput = new PlaybackOutput(context, this.meter);
       this.brainwave = new BrainwaveEngine(context);
-      this.nature = new NatureEngine(context, (biomeLoadingState, usingProceduralFallback) =>
-        useAudioStore.setState({ biomeLoadingState, usingProceduralFallback }));
+      this.nature = new NatureEngine(context, (biomeLoadingState, usingProceduralFallback) => {
+        const state = useAudioStore.getState();
+        if (state.biomeLoadingState !== biomeLoadingState || state.usingProceduralFallback !== usingProceduralFallback) {
+          useAudioStore.setState({ biomeLoadingState, usingProceduralFallback });
+        }
+      });
       this.pad = new SynthPadEngine(context);
       this.brainwave.output.connect(this.master);
       this.nature.output.connect(this.master);
@@ -88,12 +93,15 @@ class AudioEngineManager {
       useAudioStore.subscribe((state) => state.sleepTimerMin, () => this.resetSleep());
       useAudioStore.subscribe((state) => state.fadeOutSec, () => this.resetSleep());
       useAudioStore.subscribe((state) => state.activePresetId, () => this.resetSleep());
-      if (detectPlatform() === 'web') {
-        document.addEventListener('visibilitychange', () => {
-          if (document.hidden || !useAudioStore.getState().isPlaying || context.state === 'running') return;
+      const platform = detectPlatform();
+      if (platform === 'web' || platform === 'capacitor-android') {
+        const recover = () => {
+          if (document.hidden || !useAudioStore.getState().isPlaying || context.state === 'running' || context.state === 'closed') return;
           preferMixableBrowserAudio();
           void context.resume().catch(() => undefined);
-        });
+        };
+        document.addEventListener('visibilitychange', recover);
+        if (platform === 'capacitor-android') window.addEventListener('braindawwindowfocus', recover);
       }
       this.initialized = true;
     } catch (error) {
@@ -182,7 +190,10 @@ class AudioEngineManager {
     this.updateMaster();
     clearInterval(this.timer);
     try {
-      if (!finished) await new Promise((resolve) => setTimeout(resolve, 350));
+      if (!finished) {
+        const latency = Math.min(0.5, (this.context?.baseLatency ?? 0) + (this.context?.outputLatency ?? 0));
+        await new Promise((resolve) => setTimeout(resolve, 350 + latency * 1000));
+      }
       this.playbackOutput?.pause();
       if (this.context && this.context.state !== 'closed' && this.context.state !== 'suspended') await this.context.suspend();
     } finally {

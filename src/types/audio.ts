@@ -15,6 +15,7 @@ export type BiomeId =
   | 'night_forest'
   | 'ocean_coast'
   | 'alpine_wind'
+  | 'fireside'
   | string;
 
 export type ScaleId =
@@ -26,7 +27,7 @@ export type ScaleId =
 
 export type PadWaveform = 'sine' | 'triangle' | 'warm_saw' | 'glass_pad';
 
-export type PresetCategory = 'sleep' | 'meditation' | 'focus' | 'lucid' | 'psychedelic' | 'custom';
+export type PresetCategory = 'sleep' | 'meditation' | 'focus' | 'lucid' | 'psychedelic' | 'pure' | 'soundscape' | 'custom';
 
 export interface BrainwaveParams {
   enabled: boolean;
@@ -42,9 +43,7 @@ export interface BrainwaveParams {
   warmthFilterHz: number;      // 300 to 4000 Hz
 }
 
-export interface NatureParams {
-  enabled: boolean;
-  volume: number;              // 0.0 to 1.0
+export interface NatureSoundParams {
   biome: BiomeId;
   rainIntensity: number;       // 0.0 to 1.0 (crossfades 3 real rain tiers)
   thunderProbability: number;  // 0.0 to 1.0 (Poisson arrival rate)
@@ -56,6 +55,20 @@ export interface NatureParams {
   stereoWidth: number;         // 0.0 to 1.0
   reverbSpace: number;         // 0.0 to 1.0 (outdoor convolution IR wetness)
   surrealDepth: number;        // 0.0 to 1.0 (granular cloud + shimmer dissolve)
+  fireCrackle?: number;
+  fireWarmth?: number;
+}
+
+export interface NatureBlend {
+  x: number;
+  y: number;
+  corners: [NatureSoundParams, NatureSoundParams, NatureSoundParams, NatureSoundParams];
+}
+
+export interface NatureParams extends NatureSoundParams {
+  enabled: boolean;
+  volume: number;
+  blend?: NatureBlend;
 }
 
 export interface SynthPadParams {

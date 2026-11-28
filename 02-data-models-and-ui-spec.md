@@ -51,9 +51,7 @@ export interface BrainwaveParams {
   warmthFilterHz: number;      // 300 to 4000 Hz
 }
 
-export interface NatureParams {
-  enabled: boolean;
-  volume: number;              // 0.0 to 1.0
+export interface NatureSoundParams {
   biome: BiomeId;
   rainIntensity: number;       // 0.0 to 1.0 (crossfades 3 real rain tiers)
   thunderProbability: number;  // 0.0 to 1.0 (Poisson arrival rate)
@@ -65,6 +63,20 @@ export interface NatureParams {
   stereoWidth: number;         // 0.0 to 1.0
   reverbSpace: number;         // 0.0 to 1.0 (outdoor convolution IR wetness)
   surrealDepth: number;        // 0.0 to 1.0 (granular cloud + shimmer dissolve)
+  fireCrackle?: number;
+  fireWarmth?: number;
+}
+
+export interface NatureBlend {
+  x: number;
+  y: number;
+  corners: [NatureSoundParams, NatureSoundParams, NatureSoundParams, NatureSoundParams];
+}
+
+export interface NatureParams extends NatureSoundParams {
+  enabled: boolean;
+  volume: number;
+  blend?: NatureBlend;
 }
 
 export interface SynthPadParams {
@@ -181,7 +193,7 @@ All audio controls MUST feel like hardware/DAW instruments rather than default b
    - SVG arc indicator with vertical drag interaction (`150px` drag = full sweep, `Shift + Drag` = fine mode, mouse-wheel step support, double-click reset).
 3. **`XYPad.tsx`:**
    - 2D interactive glass pad with glowing crosshair & radial trail for simultaneous two-axis sculpting:
-     - **Nature XY Pad:** X = `rainIntensity`, Y = `surrealDepth` (or toggleable to `wildlifeDensity`).
+     - **Nature blend pad:** Fireside, Rainstorm, Ocean Coast, and Rainforest are the default corners. The center gives each source 25% of the mix. Each corner has its own source selector and controls, including the Rain/Surreal or Rain/Wildlife pad for non-fireside corners.
      - **Synth Pad XY Pad:** X = `filterCutoffHz`, Y = `shimmerAmount`.
 4. **`VisualizerCanvas.tsx`:**
    - Thin, subtle 60fps HTML5 `<canvas>` ribbon integrated into the top transport header.

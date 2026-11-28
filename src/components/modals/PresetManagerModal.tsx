@@ -1,6 +1,7 @@
 import { Download, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { noteName } from '../../audio/utils/musicTheory';
+import { natureWeights } from '../../audio/natureBlend';
 import { exportFile, fileBasename, pickDesktopFiles } from '../../platform/fileExport';
 import { isDesktop } from '../../platform/platformBridge';
 import { biomeNames, factoryPresetGroups, presetCategories } from '../../store/factoryPresets';
@@ -17,7 +18,13 @@ function presetSound(preset: NeuroScapePreset) {
   const { beatHz, mode } = preset.brainwave;
   const end = preset.timeline?.at(-1)?.targetBeatHz;
   const beat = end === undefined ? String(beatHz) : beatHz + ' → ' + end;
-  const biome = biomeNames[preset.nature.biome] ?? preset.nature.biome;
+  const blend = preset.nature.blend;
+  const sources = [preset.nature.biome];
+  if (blend) {
+    const weights = natureWeights(blend.x, blend.y);
+    sources.splice(0, 1, ...blend.corners.filter((_, index) => weights[index] > 0).map(({ biome }) => biome));
+  }
+  const biome = [...new Set(sources.map((source) => biomeNames[source] ?? source))].join(' + ');
   const pad = preset.synthPad.waveform.replace(/_/g, ' ');
   return [
     preset.brainwave.enabled && (mode + ' · ' + beat + ' Hz'),

@@ -19,6 +19,10 @@ https://github.com/user-attachments/assets/4ddbce67-421e-4e2a-969d-102f1ce68fca
 
 Select a session preset and press Play. Use stereo headphones for binaural playback. Each channel has a level and an independent on/off switch. The master transport controls volume and the sleep timer. Space toggles playback, M toggles master mute, and 1–3 toggle the three channels.
 
+In **Nature → Nature blend**, drag toward a corner to bring its sound forward. The defaults are Fireside, Rainstorm, Ocean Coast, and Rainforest. **Center mix** sets each share to 25%. Select a corner below the pad to choose its source and edit its own controls. The arrow keys move the pad and Home centers it. Switching corners keeps the edits you already made.
+
+The preset library groups isolated tones under **Pure brainwaves** and original nature sessions under **Restful soundscapes**. Presets and JSON exports include the four corner settings and the position on the blend pad. Older single-biome mixes open at the corner that holds their original sound.
+
 Use the preset library to save, load, and move mixes as JSON. Use the timeline to set timed carrier and beat ramps. Nature accepts individual audio files, a manifest with its recordings, or a previously exported biome ZIP. Presets and imported recordings are stored on the current device. The PWA caches its built-in recordings and worklets for offline use.
 
 See the [field recording credits](public/biomes/credits.md) and the three engineering specifications in the repository root.

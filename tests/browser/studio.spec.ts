@@ -121,6 +121,33 @@ test('mobile can switch between channels while transport and mixer remain availa
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 });
 
+test('nature corners keep independent settings and the centered mix survives export', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Nature', exact: true }).click();
+  const pad = page.getByRole('group', { name: 'Nature blend XY pad' });
+  await pad.press('Home');
+  await expect(pad.getByText('25%', { exact: true })).toHaveCount(4);
+  await page.getByRole('button', { name: 'Edit top left corner' }).click();
+  await expect(page.getByRole('combobox', { name: 'Biome' })).toHaveValue('fireside');
+  await page.getByRole('slider', { name: 'Crackle' }).press('End');
+  await page.getByRole('button', { name: 'Edit top right corner' }).click();
+  await page.getByRole('slider', { name: 'Rain intensity' }).press('Home');
+  await page.getByRole('button', { name: 'Edit top left corner' }).click();
+  await expect(page.getByRole('slider', { name: 'Crackle' })).toHaveAttribute('aria-valuenow', '1');
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByText('Four-corner mix active')).toBeVisible();
+  await page.getByRole('button', { name: 'Preset library' }).click();
+  const output = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export current' }).click();
+  const stream = await (await output).createReadStream();
+  const exported = JSON.parse(Buffer.concat(await stream.toArray()).toString());
+  expect(exported.nature.blend).toMatchObject({ x: 0.5, y: 0.5, corners: [
+    { biome: 'fireside', fireCrackle: 1 }, { biome: 'rainstorm', rainIntensity: 0 },
+    { biome: 'ocean_coast' }, { biome: 'jungle' },
+  ] });
+});
+
 test('lucid dreaming sessions are searchable and the speaker mix loads its isochronic timeline', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Preset library' }).click();

@@ -1,6 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { splitFrequencies } from '../../src/audio/BrainwaveEngine';
 import { sealLoop } from '../../src/audio/SeamlessLooper';
+import { natureCornerPositions, natureWeights, readNatureBlend } from '../../src/audio/natureBlend';
 import { factoryPresets } from '../../src/store/factoryPresets';
 import { parsePreset } from '../../src/store/presets';
 import { initialVoicing, midiToHz, neighboringNotes } from '../../src/audio/utils/musicTheory';
@@ -11,6 +12,28 @@ test('every factory preset has a unique ID and survives preset JSON validation',
   expect(new Set(factoryPresets.map((preset) => preset.id)).size).toBe(factoryPresets.length);
   for (const preset of factoryPresets) {
     expect(parsePreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
+  }
+});
+
+test('nature pad has isolated corners, equal center weights and a constant mix share', () => {
+  expect(natureWeights(0.5, 0.5)).toEqual([0.25, 0.25, 0.25, 0.25]);
+  for (const [index, { x, y }] of natureCornerPositions.entries()) {
+    expect(natureWeights(x, y)).toEqual([0, 1, 2, 3].map((i) => Number(i === index)));
+  }
+  expect(natureWeights(0.27, 0.81).reduce((sum, weight) => sum + weight, 0)).toBeCloseTo(1);
+});
+
+test('legacy nature picks retain their sound and blend imports validate all four corners', () => {
+  const legacy = factoryPresets.find(({ id }) => id === 'delta-midnight-storm')!;
+  const blend = readNatureBlend(legacy.nature);
+  expect([blend.x, blend.y]).toEqual([1, 1]);
+  expect(blend.corners[1].rainIntensity).toBe(legacy.nature.rainIntensity);
+  const preset = factoryPresets.find(({ id }) => id === 'four-seasons-still')!;
+  const malformed = structuredClone(preset);
+  malformed.nature.blend!.corners[0].fireWarmth = 3;
+  expect(() => parsePreset(malformed)).toThrow(/valid BrainDAW preset/);
+  for (const pure of factoryPresets.filter(({ category }) => category === 'pure')) {
+    expect(pure.brainwave.enabled && !pure.nature.enabled && !pure.synthPad.enabled).toBe(true);
   }
 });
 

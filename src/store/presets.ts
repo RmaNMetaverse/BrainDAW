@@ -10,6 +10,15 @@ const string = (value: unknown, limit: number) => typeof value === 'string' && v
 const choice = (value: unknown, values: readonly string[]) => typeof value === 'string' && values.includes(value);
 const levels = (value: Obj, keys: string[]) => keys.every((key) => number(value[key], 0, 1));
 const categories = Object.keys(presetCategories);
+const isNatureSound = (sound: Obj) => typeof sound.biome === 'string' && /^[a-z0-9_-]{1,64}$/.test(sound.biome) &&
+  levels(sound, ['rainIntensity', 'thunderProbability', 'thunderDistance', 'windGustiness', 'wildlifeDensity', 'insectBed', 'waterFlow', 'stereoWidth', 'reverbSpace', 'surrealDepth']) &&
+  ['fireCrackle', 'fireWarmth'].every((key) => sound[key] === undefined || number(sound[key], 0, 1));
+
+function isNatureBlend(value: unknown) {
+  const blend = object(value);
+  return levels(blend, ['x', 'y']) && Array.isArray(blend.corners) && blend.corners.length === 4 &&
+    blend.corners.every((corner) => isNatureSound(object(corner)));
+}
 
 export function parsePreset(value: unknown): NeuroScapePreset {
   const data = object(value);
@@ -23,8 +32,7 @@ export function parsePreset(value: unknown): NeuroScapePreset {
     choice(brain.mode, ['binaural', 'isochronic', 'monaural', 'hybrid']) && number(brain.carrierHz, 60, 500) && number(brain.beatHz, 0.5, 45) &&
     levels(brain, ['isochronicDepth', 'rhythmModDepth', 'frequencyDriftDepth']) &&
     number(brain.rhythmModHz, 0, 0.5) && number(brain.warmthFilterHz, 300, 4000) &&
-    typeof nature.biome === 'string' && /^[a-z0-9_-]{1,64}$/.test(nature.biome) &&
-    levels(nature, ['rainIntensity', 'thunderProbability', 'thunderDistance', 'windGustiness', 'wildlifeDensity', 'insectBed', 'waterFlow', 'stereoWidth', 'reverbSpace', 'surrealDepth']) &&
+    isNatureSound(nature) && (nature.blend === undefined || isNatureBlend(nature.blend)) &&
     number(pad.rootNote, 24, 72) && Number.isInteger(pad.rootNote) && (pad.tuningHz === 432 || pad.tuningHz === 440) &&
     choice(pad.scale, ['lydian', 'dorian', 'minor_pentatonic', 'sus2_drone', 'aeolian']) &&
     choice(pad.waveform, ['sine', 'triangle', 'warm_saw', 'glass_pad']) &&

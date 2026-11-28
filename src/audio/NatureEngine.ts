@@ -1,10 +1,11 @@
-import type { BiomePackManifest, NatureParams } from '../types/audio';
+import type { BiomePackManifest, NatureParams, NatureSoundParams } from '../types/audio';
 import { database } from '../store/database';
 import { BioAcousticScheduler } from './BioAcousticScheduler';
 import { BiomePackLoader, type DecodedBiome } from './BiomePackLoader';
 import { SeamlessLooper } from './SeamlessLooper';
 import { gain, impulse, lowpass, oscillator } from './utils/audioGraph';
 import { clamp, equalPowerCrossfade, smoothParam } from './utils/smoothing';
+import { legacyNatureCorner, natureCornerIndexes, natureWeights, type NatureCornerIndex } from './natureBlend';
 
 type Scene = {
   level: GainNode;
@@ -19,40 +20,27 @@ type Scene = {
   stop: (now: number, immediate: boolean) => void;
 };
 
-export class NatureEngine {
+class NatureVoice {
   readonly output;
   private readonly fallback;
   private readonly fallbackSpace;
+  private readonly fallbackShimmer;
   private readonly loader;
   private scene?: Scene;
-  private params?: NatureParams;
+  private params?: NatureSoundParams;
   private request?: AbortController;
+  private weight = 0;
 
   constructor(private readonly context: AudioContext, private readonly onStatus: (message: string, fallback: boolean) => void) {
     this.output = gain(context, 0);
     this.loader = new BiomePackLoader(context);
     this.fallback = new AudioWorkletNode(context, 'nature-noise', { numberOfInputs: 0, outputChannelCount: [2] });
-    const space = this.makeShimmer();
+    const space = this.fallbackShimmer = this.makeShimmer();
     this.fallbackSpace = gain(context, 0);
     this.fallback.connect(this.output);
     this.fallback.connect(space).connect(this.fallbackSpace).connect(this.output);
     space.parameters.get('shimmer')?.setValueAtTime(0.45, context.currentTime);
   }
-
-  static async listCustom() {
-    return (await (await database()).getAll('biomeManifests')).filter(({ id }) => id.startsWith('user-'));
-  }
-
-  static async importFiles(files: File[]): Promise<BiomePackManifest> {
-    const context = new AudioContext();
-    try {
-      return await new BiomePackLoader(context).importFiles(files);
-    } finally {
-      await context.close();
-    }
-  }
-
-  static async exportFiles(id: string) { return BiomePackLoader.exportFiles(id); }
 
   private makeShimmer() {
     return new AudioWorkletNode(this.context, 'shimmer-reverb', { outputChannelCount: [2] });
@@ -146,6 +134,10 @@ export class NatureEngine {
       this.scene = undefined;
       this.apply(0.26);
     }
+    if (biome === 'fireside') {
+      this.onStatus('Procedural fireside', true);
+      return;
+    }
     this.onStatus('Loading recordings…', true);
     const samples = await this.loader.load(biome, request.signal).catch(() => undefined);
     if (request.signal.aborted) return;
@@ -158,11 +150,34 @@ export class NatureEngine {
     this.onStatus('Field recordings active', false);
   }
 
-  update(params: NatureParams) {
+  update(params: NatureSoundParams) {
+    if (this.params === params) return;
     const changed = this.params?.biome !== params.biome;
     this.params = params;
     if (changed) void this.select(params.biome);
     this.apply();
+  }
+
+  setWeight(weight: number) {
+    if (weight === this.weight) return;
+    const powered = this.weight > 0;
+    this.weight = weight;
+    smoothParam(this.output.gain, weight, this.context.currentTime);
+    if (powered !== (weight > 0)) this.apply();
+  }
+
+  dispose() {
+    this.request?.abort();
+    const running = this.context.state === 'running';
+    this.scene?.stop(this.context.currentTime, !running);
+    this.setWeight(0);
+    const disconnect = () => {
+      this.fallback.port.close();
+      this.fallbackShimmer.port.close();
+      for (const node of [this.fallback, this.fallbackShimmer, this.fallbackSpace, this.output]) node.disconnect();
+    };
+    if (running) setTimeout(disconnect, 350);
+    else disconnect();
   }
 
   private apply(timeConstant = 0.04) {
@@ -173,7 +188,7 @@ export class NatureEngine {
     const change = (param: AudioParam | undefined, value: number) => {
       if (param) smoothParam(param, value, now, timeConstant);
     };
-    change(this.output.gain, params.enabled ? params.volume : 0);
+    const active = this.weight > 0;
     const rain = params.rainIntensity;
     const [low, high] = equalPowerCrossfade(rain < 0.5 ? rain * 2 : rain * 2 - 1);
     const [softWind, strongWind] = equalPowerCrossfade(params.windGustiness);
@@ -193,21 +208,101 @@ export class NatureEngine {
       wildlife: scene?.samples.oneshots.wildlife.length ? 0 : params.wildlifeDensity,
       width: params.stereoWidth,
       character: params.biome === 'alpine_wind' ? 0.9 : params.biome === 'ocean_coast' ? 0.15 : 0.35,
+      fire: params.biome === 'fireside' ? 1 : 0,
+      fireCrackle: params.fireCrackle ?? 0.55,
+      fireWarmth: params.fireWarmth ?? 0.62,
     };
-    for (const [key, value] of Object.entries(noise)) change(this.fallback.parameters.get(key), value);
+    for (const [key, value] of Object.entries(noise)) change(this.fallback.parameters.get(key), active ? value : 0);
     change(this.fallbackSpace.gain, params.reverbSpace * 0.06 + params.surrealDepth * 0.27);
     if (!scene) return;
-    scene.events.update(params);
+    scene.events.update(params, active);
     const ordinary = 1 - params.surrealDepth * 0.41;
-    for (const { looper, key, trim } of scene.loops) change(looper.output.gain, levels[key] * trim * ordinary);
+    for (const { looper, key, trim } of scene.loops) change(looper.output.gain, active ? levels[key] * trim * ordinary : 0);
     change(scene.windMod.gain, params.windGustiness * 0.2);
     scene.width.forEach((node, index) => change(node.gain, (1 + (index % 3 === 0 ? 1 : -1) * params.stereoWidth) / 2));
-    change(scene.granular.parameters.get('depth'), params.surrealDepth);
+    change(scene.granular.parameters.get('depth'), active ? params.surrealDepth : 0);
     change(scene.shimmer.parameters.get('shimmer'), params.surrealDepth * 0.88);
     change(scene.shimmer.parameters.get('decay'), 4 + params.surrealDepth * 7);
   }
 
   tick() {
     this.scene?.events.tick();
+  }
+}
+
+type Slot = { voice: NatureVoice; status: string; fallback: boolean; weight: number };
+
+export class NatureEngine {
+  readonly output;
+  private readonly slots: Partial<Record<NatureCornerIndex, Slot>> = {};
+  private volume = 0;
+
+  constructor(private readonly context: AudioContext, private readonly onStatus: (message: string, fallback: boolean) => void) {
+    this.output = gain(context, 0);
+  }
+
+  static async listCustom() {
+    return (await (await database()).getAll('biomeManifests')).filter(({ id }) => id.startsWith('user-'));
+  }
+
+  static async importFiles(files: File[]): Promise<BiomePackManifest> {
+    const context = new AudioContext();
+    try {
+      return await new BiomePackLoader(context).importFiles(files);
+    } finally {
+      await context.close();
+    }
+  }
+
+  static async exportFiles(id: string) { return BiomePackLoader.exportFiles(id); }
+
+  update(params: NatureParams) {
+    const volume = params.enabled ? params.volume : 0;
+    if (volume !== this.volume) {
+      smoothParam(this.output.gain, volume, this.context.currentTime);
+      this.volume = volume;
+    }
+    const { blend } = params;
+    const single = legacyNatureCorner(params.biome);
+    const weights = blend ? natureWeights(blend.x, blend.y) : undefined;
+    for (const index of natureCornerIndexes) {
+      let slot = this.slots[index];
+      if (!(blend || index === single) || (!params.enabled && !slot)) {
+        if (slot) {
+          slot.voice.dispose();
+          delete this.slots[index];
+        }
+        continue;
+      }
+      if (!slot) {
+        const voice = new NatureVoice(this.context, (status, fallback) => {
+          const current = this.slots[index];
+          if (current?.voice !== voice) return;
+          current.status = status;
+          current.fallback = fallback;
+          this.publishStatus();
+        });
+        voice.output.connect(this.output);
+        slot = this.slots[index] = { voice, status: '', fallback: true, weight: 0 };
+      }
+      const weight = volume > 0 ? (weights?.[index] ?? 1) : 0;
+      slot.weight = weight;
+      slot.voice.setWeight(weight);
+      slot.voice.update(blend?.corners[index] ?? params);
+    }
+    this.publishStatus();
+  }
+
+  private publishStatus() {
+    const audible = Object.values(this.slots).filter((slot) => slot.weight > 0);
+    if (!audible.length) return this.onStatus('', true);
+    if (audible.length === 1) return this.onStatus(audible[0].status, audible[0].fallback);
+    const loading = audible.some((slot) => slot.status === 'Loading recordings…');
+    const fallback = audible.every((slot) => slot.fallback);
+    this.onStatus(loading ? 'Loading corner recordings…' : 'Four-corner mix active', fallback);
+  }
+
+  tick() {
+    for (const slot of Object.values(this.slots)) if (slot.weight > 0) slot.voice.tick();
   }
 }
